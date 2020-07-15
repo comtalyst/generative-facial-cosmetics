@@ -55,7 +55,7 @@ def get_tfrec_names(dir):
   return filenames
 
 ### just call this ez func
-def get_dataset(bucket_dir, shuffle=False):
-  return load_dataset(get_tfrec_names(bucket_dir), shuffle)
+def get_dataset(bucket_dir, shuffle=False, batch=False):
+  return load_dataset(get_tfrec_names(bucket_dir), shuffle, batch)
 
 ###### Execution ######
