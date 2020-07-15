@@ -48,22 +48,26 @@ def read_tfrecord(example):
   with strategy.scope(): 
     features = {
       "image": tf.io.FixedLenFeature([], tf.string),        # tf.string means bytestring
+      "name": tf.io.FixedLenFeature([], tf.int64)
     }
     example = tf.io.parse_example(example, features)
     images = tf.image.decode_png(example['image'], channels=3)
     images = tf.cast(images, tf.float32) / 255.0              # convert image to floats in [0, 1] range
     images = tf.image.resize(images, IMAGE_SIZE)              # explicit size will be needed for TPU
-    return images ######
+    names = example['name']
+    return images, names ######
   
 ### convert tfrecord of PNGs to PNGs
 def read_tfrecord_raw(example):
   with strategy.scope(): 
     features = {
       "image": tf.io.FixedLenFeature([], tf.string),        # tf.string means bytestring
+      "name": tf.io.FixedLenFeature([], tf.int64)
     }
     example = tf.io.parse_example(example, features)
     images = example['image']
-    return images ######
+    names = example['name']
+    return images, names ######
   
 ### return "list" of image tensors from specified TFRecords
 def load_dataset(filenames, raw=False, shuffle=False):
