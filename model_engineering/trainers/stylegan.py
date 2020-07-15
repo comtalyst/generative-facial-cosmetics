@@ -17,7 +17,6 @@ from technical.accelerators import strategy
 
 LATENT_SIZE = 256
 IMAGE_SHAPE = (360, 360, 4)
-BATCH_SIZE = 128
 
 ## optimizers
 generator_optimizer = tf.keras.optimizers.Adam(1e-4)
@@ -46,8 +45,8 @@ def generator_loss(fake_output):
   return losses.cross_entropy(tf.ones_like(fake_output), fake_output)
 
 @tf.function
-def train_step(generator, discriminator, images):
-  noise = tf.random.normal([BATCH_SIZE, LATENT_SIZE])
+def train_step(generator, discriminator, images, batch_size):
+  noise = tf.random.normal([batch_size, LATENT_SIZE])
   with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
     generated_images = generator(noise, training=True)
 
@@ -63,7 +62,7 @@ def train_step(generator, discriminator, images):
   generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
   discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
 
-def train(generator, discriminator, dataset, epochs, strategy):
+def train(generator, discriminator, dataset, epochs, batch_size, strategy):
 
   ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                              discriminator_optimizer=discriminator_optimizer,
@@ -80,7 +79,7 @@ def train(generator, discriminator, dataset, epochs, strategy):
     start = time.time()
 
     for image_batch in dataset:
-      strategy.run(train_step, args=(generator, discriminator, image_batch))
+      strategy.run(train_step, args=(generator, discriminator, image_batch, batch_size))
 
     # Produce images for the GIF as we go
     display.clear_output(wait=True)

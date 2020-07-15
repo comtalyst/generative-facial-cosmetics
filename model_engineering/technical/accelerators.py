@@ -36,6 +36,11 @@ else:
 
 print("Number of accelerators (cores): ", strategy.num_replicas_in_sync)
 
+if tpu:
+  BATCH_SIZE = 16*strategy.num_replicas_in_sync  # A TPU has 8 cores so this will be 128
+else:
+  BATCH_SIZE = 32  # On Colab/GPU, a higher batch size does not help and sometimes does not fit on the GPU (OOM)
+
 ###### Functions ######
 
 ###### Execution ######
