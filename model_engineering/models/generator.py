@@ -33,6 +33,8 @@ def g_block(input_tensor, latent_vector, filters, upsamp=2):
   
   if upsamp > 1:
     out = layers.UpSampling2D(upsamp)(input_tensor)
+  else:
+    out = input_tensor
   out = layers.Conv2D(units=filters, kernel_size=3, padding = 'same')(out)
   out = layers.Lambda(AdaIN)([out, gamma, beta])
   out = layers.Activation('relu')(out)
