@@ -14,8 +14,8 @@ from IPython import display
 
 ###### Constants ######
 
-LATENT_SIZE = 64
-IMAGE_SHAPE = (350, 350, 4)
+LATENT_SIZE = 256
+IMAGE_SHAPE = (360, 360, 4)
 BATCH_SIZE = 128
 
 ## optimizers
