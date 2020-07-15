@@ -2,6 +2,8 @@
 
 ###### Imports ######
 
+from config import *
+import os
 import tensorflow as tf
 from tensorflow import keras
 from matplotlib import pyplot as plt
@@ -22,7 +24,7 @@ def generate_and_save_images(generator, epoch, test_input):
       plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
       plt.axis('off')
 
-  plt.savefig('image_at_epoch_{:04d}.png'.format(epoch))                ##### fix this
+  plt.savefig(os.path.join(DIR, 'image_at_epoch_{:04d}.png'.format(epoch)))
   plt.show()
 
 ###### Execution ######

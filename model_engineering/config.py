@@ -8,7 +8,7 @@ CURRENT_OS = 'Windows'                # manually change this field every time be
 if CURRENT_OS.lower()[0] == 'w':
   DIR = '.'
 elif CURRENT_OS.lower()[0] == 'c':
-  DIR = 'drive/My Drive/Live Workspace/generative-facial-cosmetics/dataset_engineering/'
+  DIR = 'drive/My Drive/Live Workspace/generative-facial-cosmetics/model_engineering/'
 else:
   raise NotImplementedError('OS is not supported yet')
 
