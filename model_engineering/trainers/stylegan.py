@@ -11,6 +11,7 @@ import functools
 import time
 import os
 from IPython import display
+from technical.accelerators import strategy
 
 ###### Constants ######
 
@@ -62,7 +63,7 @@ def train_step(generator, discriminator, images):
   generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
   discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
 
-def train(generator, discriminator, dataset, epochs):
+def train(generator, discriminator, dataset, epochs, strategy):
 
   ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                              discriminator_optimizer=discriminator_optimizer,
@@ -79,7 +80,7 @@ def train(generator, discriminator, dataset, epochs):
     start = time.time()
 
     for image_batch in dataset:
-      train_step(generator, discriminator, image_batch)
+      strategy.run(train_step, args=(generator, discriminator, image_batch))
 
     # Produce images for the GIF as we go
     display.clear_output(wait=True)

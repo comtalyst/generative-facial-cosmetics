@@ -41,44 +41,45 @@ def g_block(input_tensor, latent_vector, filters, upsamp=2):
   
   return out
 
-def build_model():
-  # Latent input
-  latent_input = layers.Input([LATENT_SIZE])
+def build_model(strategy):
+  with strategy.scope():
+    # Latent input
+    latent_input = layers.Input([LATENT_SIZE])
 
-  # Map latent input
-  latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent_input)
-  latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent)
-  latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent)
+    # Map latent input
+    latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent_input)
+    latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent)
+    latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent)
 
-  # Reshape to 3x3x64
-  x = layers.Dense(units=5*5*LATENT_SIZE, activation = 'relu')(latent_input)
-  x = layers.Reshape([5, 5, LATENT_SIZE])(x)
+    # Reshape to 3x3x64
+    x = layers.Dense(units=5*5*LATENT_SIZE, activation = 'relu')(latent_input)
+    x = layers.Reshape([5, 5, LATENT_SIZE])(x)
 
-  # Size: 5x5x256
-  x = g_block(x, latent, 256, 3)
+    # Size: 5x5x256
+    x = g_block(x, latent, 256, 3)
 
-  # Size: 15x15x256
-  x = g_block(x, latent, 128, 1)
+    # Size: 15x15x256
+    x = g_block(x, latent, 128, 1)
 
-  # Size: 15x15x128
-  x = g_block(x, latent, 64, 3)
+    # Size: 15x15x128
+    x = g_block(x, latent, 64, 3)
 
-  # Size: 45x45x64
-  x = g_block(x, latent, 32)
+    # Size: 45x45x64
+    x = g_block(x, latent, 32)
 
-  # Size: 90x90x32
-  x = g_block(x, latent, 16)
+    # Size: 90x90x32
+    x = g_block(x, latent, 16)
 
-  # Size: 180x180x16
-  x = g_block(x, latent, 8)
+    # Size: 180x180x16
+    x = g_block(x, latent, 8)
 
-  # Size: 360x360x8, make RGB with values between 0 and 1
-  image_output = layers.Conv2D(4, 1, padding = 'same', activation = 'sigmoid')(x)
+    # Size: 360x360x8, make RGB with values between 0 and 1
+    image_output = layers.Conv2D(4, 1, padding = 'same', activation = 'sigmoid')(x)
 
-  # Make Model
-  model = Model(inputs = latent_input, outputs = image_output)
+    # Make Model
+    model = Model(inputs = latent_input, outputs = image_output)
 
-  model.summary()
+    model.summary()
 
   return model
 
