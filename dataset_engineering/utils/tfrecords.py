@@ -62,11 +62,11 @@ def read_tfrecord_raw(example):
   with strategy.scope(): 
     features = {
       "image": tf.io.FixedLenFeature([], tf.string),        # tf.string means bytestring
-      "name": tf.io.FixedLenFeature([], tf.int64)
+      "id": tf.io.FixedLenFeature([], tf.int64)
     }
     example = tf.io.parse_example(example, features)
     images = example['image']
-    names = example['name']
+    names = example['id']
     return images, names ######
   
 ### return "list" of image tensors from specified TFRecords
