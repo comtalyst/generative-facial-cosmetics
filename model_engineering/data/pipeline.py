@@ -32,37 +32,33 @@ def read_tfrecord(example):
   return (images, ids)
 
 ### data augmentation (return the image param if no augmentation is needed)
-def data_augment(data_pair):
-  image, id = data_pair
-
-  ## random saturation
-  image = tf.image.random_saturation(image, 0, 2)
-
+def data_augment(image, id):
   ## random resize (zoom)
-  coords = JSON[str(id)]
-  min_x = 9999999
-  min_y = 9999999
-  max_x = -9999999
-  max_y = -9999999
-  for coord in coords:
-    x, y = coord
-    min_x = np.min(min_x, x)
-    min_y = np.min(min_y, y)
-    max_x = np.max(max_x, x)
-    max_y = np.max(max_y, y)
-  w = max_x - min_x
-  h = max_y - min_y
-  max_resize = np.max(w/IMAGE_SIZE[0], h/IMAGE_SIZE[1])
-  random_scale = max_resize + np.random.rand()*(1 - max_resize)   # random resize scale without overflowing the image content
-  image = tf.image.central_crop(image, random_scale)              # crop from center
-  image = Image.fromarray(image.numpy()).resize(IMAGE_SIZE)       # resize back using PIL
-  image = tf.convert_to_tensor(np.array(image))                   # convert back to tf tensor
+  if str(id)[0] != 'T':
+    coords = JSON[str(id)]
+    min_x = 9999999
+    min_y = 9999999
+    max_x = -9999999
+    max_y = -9999999
+    for coord in coords:
+      x, y = coord
+      min_x = np.min(min_x, x)
+      min_y = np.min(min_y, y)
+      max_x = np.max(max_x, x)
+      max_y = np.max(max_y, y)
+    w = max_x - min_x
+    h = max_y - min_y
+    max_resize = np.max(w/IMAGE_SIZE[0], h/IMAGE_SIZE[1])
+    random_scale = max_resize + np.random.rand()*(1 - max_resize)   # random resize scale without overflowing the image content
+    image = tf.image.central_crop(image, random_scale)              # crop from center
+    image = Image.fromarray(image.numpy()).resize(IMAGE_SIZE)       # resize back using PIL
+    image = tf.convert_to_tensor(np.array(image))                   # convert back to tf tensor
 
   return (image, id)
 
 ### unpack (image, id) to only image
-def unpack(data_pair):
-  return data_pair[0]
+def unpack(image, id):
+  return image
 
 ### return "list" of image tensors from specified TFRecords
 def load_dataset(filenames, shuffle=False, batch=False, augment=False, json_map=None):
@@ -76,6 +72,7 @@ def load_dataset(filenames, shuffle=False, batch=False, augment=False, json_map=
   dataset = dataset.with_options(option_no_order)
   dataset = dataset.map(read_tfrecord, num_parallel_calls=AUTO)   # dataset from tfrecords is now in a parallel (normal/good) format
   if augment:
+    global JSON 
     JSON = json_map
     dataset = dataset.map(data_augment, num_parallel_calls=AUTO)
   if shuffle:
