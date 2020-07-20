@@ -15,14 +15,14 @@ IMAGE_SHAPE = (360, 360, 4)
 
 def AdaIN(x):
   # Normalize x[0] (image representation)
-  mean = keras.mean(x[0], axis = [1, 2], keepdims = True)
-  std = keras.std(x[0], axis = [1, 2], keepdims = True) + 1e-7
+  mean = keras.backend.mean(x[0], axis = [1, 2], keepdims = True)
+  std = keras.backend.std(x[0], axis = [1, 2], keepdims = True) + 1e-7
   y = (x[0] - mean) / std
   
   # Reshape scale and bias parameters
   pool_shape = [-1, 1, 1, y.shape[-1]]
-  scale = keras.reshape(x[1], pool_shape)
-  bias = keras.reshape(x[2], pool_shape)
+  scale = keras.backend.reshape(x[1], pool_shape)
+  bias = keras.backend.reshape(x[2], pool_shape)
   
   # Multiply by x[1] (GAMMA) and add x[2] (BETA)
   return y * scale + bias
@@ -35,7 +35,7 @@ def g_block(input_tensor, latent_vector, filters, upsamp=2):
     out = layers.UpSampling2D(upsamp)(input_tensor)
   else:
     out = input_tensor
-  out = layers.Conv2D(units=filters, kernel_size=3, padding = 'same')(out)
+  out = layers.Conv2D(filters=filters, kernel_size=3, padding = 'same')(out)
   out = layers.Lambda(AdaIN)([out, gamma, beta])
   out = layers.Activation('relu')(out)
   
