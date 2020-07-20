@@ -17,6 +17,7 @@ from IPython import display
 
 LATENT_SIZE = 256
 IMAGE_SHAPE = (360, 360, 4)
+FIRSTSTEP = True
 
 ## optimizers
 generator_optimizer = tf.keras.optimizers.Adam(1e-4)
@@ -36,13 +37,13 @@ RESTORE_CHECKPOINT = True
 
 ## losses
 def discriminator_loss(real_output, fake_output):
-  real_loss = losses.cross_entropy(tf.ones_like(real_output), real_output)
-  fake_loss = losses.cross_entropy(tf.zeros_like(fake_output), fake_output)
+  real_loss = losses.BinaryCrossentropy(from_logits=True)(tf.ones_like(real_output), real_output)
+  fake_loss = losses.BinaryCrossentropy(from_logits=True)(tf.zeros_like(fake_output), fake_output)
   total_loss = real_loss + fake_loss
   return total_loss
 
 def generator_loss(fake_output):
-  return losses.cross_entropy(tf.ones_like(fake_output), fake_output)
+  return losses.BinaryCrossentropy(from_logits=True)(tf.ones_like(fake_output), fake_output)
 
 @tf.function
 def train_step(generator, discriminator, images, batch_size):
@@ -79,7 +80,13 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
     start = time.time()
 
     for image_batch in dataset:
-      strategy.run(train_step, args=(generator, discriminator, image_batch, batch_size))
+      if isColab():
+        strategy.run(train_step, args=(generator, discriminator, image_batch, batch_size))
+      else:
+        train_step(generator, discriminator, image_batch, batch_size)
+      if FIRSTSTEP:
+        print("First batch done!")
+        FIRSTSTEP = False
 
     # Produce images for the GIF as we go
     display.clear_output(wait=True)
