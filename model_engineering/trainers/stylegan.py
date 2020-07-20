@@ -5,7 +5,10 @@
 from config import *
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow_core.python.keras.api._v2.keras import layers, Model, optimizers, losses
+if isWindows():
+  from tensorflow_core.python.keras.api._v2.keras import layers, Model, optimizers, losses
+else:
+  from tensorflow.keras import layers, Model
 from utils.model_utils import *
 from utils.generator_utils import *
 import functools
