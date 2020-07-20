@@ -8,8 +8,8 @@ import os
 #### functions
 def init():
   ## install gcs fuse
-  os.system("echo" + "deb http://packages.cloud.google.com/apt gcsfuse-`lsb_release -c -s` main" + "|" + "sudo tee /etc/apt/sources.list.d/gcsfuse.list")
-  os.system("curl" + "https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -")
+  os.system("echo deb http://packages.cloud.google.com/apt gcsfuse-`lsb_release -c -s` main | sudo tee /etc/apt/sources.list.d/gcsfuse.list")
+  os.system("curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -")
   os.system("sudo apt-get -y -q update")
   os.system("sudo apt-get -y -q install gcsfuse")
   ## authentication
