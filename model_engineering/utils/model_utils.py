@@ -4,7 +4,10 @@
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow_core.python.keras.api._v2.keras import layers
+if isWindows():
+  from tensorflow_core.python.keras.api._v2.keras import layers
+else:
+  from tensorflow.keras import layers, Model
 
 ###### Constants ######
 
