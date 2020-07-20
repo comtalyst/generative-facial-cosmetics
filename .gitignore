@@ -2,3 +2,7 @@
 
 dataset_engineering/.ipynb_checkpoints
 dataset_engineering/outputs/anomalies
+
+*.png
+*.jpg
+*.pyc
