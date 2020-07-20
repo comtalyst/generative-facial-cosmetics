@@ -5,4 +5,5 @@ dataset_engineering/outputs/anomalies
 
 *.png
 *.jpg
+*.cpython-37.pyc
 *.pyc
