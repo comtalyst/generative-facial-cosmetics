@@ -2,6 +2,7 @@
 
 ###### Imports ######
 
+from config import *
 import tensorflow as tf
 from tensorflow import keras
 if isWindows():
