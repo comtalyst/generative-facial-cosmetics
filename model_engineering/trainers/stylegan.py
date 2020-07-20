@@ -8,7 +8,7 @@ from tensorflow import keras
 if isWindows():
   from tensorflow_core.python.keras.api._v2.keras import layers, Model, optimizers, losses
 else:
-  from tensorflow.keras import layers, Model
+  from tensorflow.keras import layers, Model, optimizers, losses
 from utils.model_utils import *
 from utils.generator_utils import *
 import functools
