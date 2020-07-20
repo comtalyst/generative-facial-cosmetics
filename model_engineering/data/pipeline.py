@@ -7,6 +7,7 @@ import os
 import tensorflow as tf
 from technical.accelerators import BATCH_SIZE as bs
 from PIL import Image
+import json
 
 ###### Constants ######
 
@@ -64,7 +65,7 @@ def unpack(data_pair):
   return data_pair[0]
 
 ### return "list" of image tensors from specified TFRecords
-def load_dataset(filenames, shuffle=False, batch=False, augment=False, json=None):
+def load_dataset(filenames, shuffle=False, batch=False, augment=False, json_map=None):
   # read from TFRecords. For optimal performance, read from multiple
   # TFRecord files at once and set the option experimental_deterministic = False
   # to allow order-altering optimizations.
@@ -75,7 +76,7 @@ def load_dataset(filenames, shuffle=False, batch=False, augment=False, json=None
   dataset = dataset.with_options(option_no_order)
   dataset = dataset.map(read_tfrecord, num_parallel_calls=AUTO)   # dataset from tfrecords is now in a parallel (normal/good) format
   if augment:
-    JSON = json
+    JSON = json_map
     dataset = dataset.map(data_augment, num_parallel_calls=AUTO)
   if shuffle:
     dataset = dataset.shuffle(len(filenames))
@@ -90,7 +91,7 @@ def load_jsons(filenames):
   for fname in filenames:
     fjson = json.load(open(fname, 'r', encoding='utf-8'))
     json_dict.update(fjson)
-  return json
+  return json_dict
 
 ### get filenames
 def get_tfrec_names(dir):
@@ -106,9 +107,9 @@ def get_json_names(dir):
 ### just call this ez func
 def get_dataset(bucket_dir, shuffle=False, batch=False, augment=False):
   if augment:
-    json = load_jsons(get_json_names(bucket_dir))       # should fit into memory
+    json_map = load_jsons(get_json_names(bucket_dir))       # should fit into memory
   else:
-    json = None
-  return load_dataset(get_tfrec_names(bucket_dir), shuffle, batch, augment, json)
+    json_map = None
+  return load_dataset(get_tfrec_names(bucket_dir), shuffle, batch, augment, json_map)
 
 ###### Execution ######
