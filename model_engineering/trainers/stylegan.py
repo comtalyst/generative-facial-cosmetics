@@ -71,7 +71,6 @@ def train_step(generator, discriminator, images, batch_size, strategy):
   else:
     true_step(images)
 
-@tf.function
 def train(generator, discriminator, dataset, epochs, batch_size, strategy):
   global FIRSTSTEP
   ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
@@ -103,7 +102,7 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
 
     # Save the model every EPOCHS_TO_SAVE epochs
     if (epoch + 1) % EPOCHS_TO_SAVE == 0:
-      ckpt_save_path = ckpt_manager.write()         # use .write instead of .save in @tf.function
+      ckpt_save_path = ckpt_manager.save()         # use .write instead of .save in @tf.function
       print ('Saving checkpoint for epoch {} at {}'.format(epoch+1, ckpt_save_path))
 
     print ('Time for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
