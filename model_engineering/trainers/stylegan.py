@@ -49,25 +49,31 @@ def generator_loss(fake_output):
   return losses.BinaryCrossentropy(from_logits=True)(tf.ones_like(fake_output), fake_output)
 
 @tf.function
-def train_step(generator, discriminator, images, batch_size):
-  noise = tf.random.normal([batch_size, LATENT_SIZE])
-  with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-    generated_images = generator(noise, training=True)
+def train_step(generator, discriminator, images, batch_size, strategy):
+  def true_step(images):
+    noise = tf.random.normal([batch_size, LATENT_SIZE])
+    with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
+      generated_images = generator(noise, training=True)
 
-    real_output = discriminator(images, training=True)
-    fake_output = discriminator(generated_images, training=True)
+      real_output = discriminator(images, training=True)
+      fake_output = discriminator(generated_images, training=True)
 
-    gen_loss = generator_loss(fake_output)
-    disc_loss = discriminator_loss(real_output, fake_output)
+      gen_loss = generator_loss(fake_output)
+      disc_loss = discriminator_loss(real_output, fake_output)
 
-  gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
-  gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+    gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
+    gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
 
-  generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
-  discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+    generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
+    discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+  if isColab():
+    strategy.run(true_step, args=(images))
+  else:
+    true_step(images)
 
+@tf.function
 def train(generator, discriminator, dataset, epochs, batch_size, strategy):
-
+  global FIRSTSTEP
   ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                              discriminator_optimizer=discriminator_optimizer,
                              generator=generator,
@@ -83,10 +89,7 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
     start = time.time()
 
     for image_batch in dataset:
-      if isColab():
-        strategy.run(train_step, args=(generator, discriminator, image_batch, batch_size))
-      else:
-        train_step(generator, discriminator, image_batch, batch_size)
+      train_step(generator, discriminator, image_batch, batch_size, strategy)
       if FIRSTSTEP:
         print("First batch done!")
         FIRSTSTEP = False
