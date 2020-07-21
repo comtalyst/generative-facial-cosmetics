@@ -40,13 +40,13 @@ RESTORE_CHECKPOINT = True
 
 ## losses
 def discriminator_loss(real_output, fake_output):
-  real_loss = losses.BinaryCrossentropy(from_logits=True)(tf.ones_like(real_output), real_output)
-  fake_loss = losses.BinaryCrossentropy(from_logits=True)(tf.zeros_like(fake_output), fake_output)
+  real_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(real_output), real_output)
+  fake_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.zeros_like(fake_output), fake_output)
   total_loss = real_loss + fake_loss
   return total_loss
 
 def generator_loss(fake_output):
-  return losses.BinaryCrossentropy(from_logits=True)(tf.ones_like(fake_output), fake_output)
+  return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
 
 @tf.function
 def train_step(generator, discriminator, images, batch_size, strategy):
@@ -67,7 +67,7 @@ def train_step(generator, discriminator, images, batch_size, strategy):
     generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
     discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
   if isColab():
-    strategy.run(true_step, args=(images))
+    strategy.run(true_step, args=(images,))
   else:
     true_step(images)
 
@@ -95,7 +95,10 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
         FIRSTSTEP = False
 
     # Produce images for the GIF as we go
-    display.clear_output(wait=True)
+    try:
+      display.clear_output(wait=True)
+    except:
+      pass
     generate_and_save_images(generator, epoch + 1, random_latent)
 
     # Save the model every EPOCHS_TO_SAVE epochs
@@ -106,7 +109,10 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
     print ('Time for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
 
   # Generate after the final epoch
-  display.clear_output(wait=True)
+  try:
+    display.clear_output(wait=True)
+  except:
+    pass
   generate_and_save_images(generator, epochs, random_latent)
 
 ###### Execution ######
