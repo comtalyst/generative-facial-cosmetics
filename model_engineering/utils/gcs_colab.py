@@ -29,7 +29,7 @@ def mount_bucket(bucketname):
   os.system("mkdir -p gcs_mounts")
   os.system("mkdir -p " + storepath + "")
   os.system("gcsfuse --implicit-dirs --limit-bytes-per-sec -1 --limit-ops-per-sec -1 " + bucketname + " " + storepath)
-  return storepath
+  return "gs://" + bucketname, storepath          # special route for colab tpu, normal route
 
 ## unmount gcs bucket
 def unmount_bucket(bucketname):

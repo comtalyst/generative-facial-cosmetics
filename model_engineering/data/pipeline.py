@@ -102,11 +102,12 @@ def get_json_names(dir):
   return filenames
 
 ### just call this ez func
-def get_dataset(bucket_dir, shuffle=False, batch=False, augment=False):
+def get_dataset(bucket_dir, shuffle=False, batch=False, augment=False, json_dir=None):
   if augment:
-    json_map = load_jsons(get_json_names(bucket_dir))       # should fit into memory
+    json_map = load_jsons(get_json_names(json_dir))       # should fit into memory
   else:
     json_map = None
   return load_dataset(get_tfrec_names(bucket_dir), shuffle, batch, augment, json_map)
 
 ###### Execution ######
+       
