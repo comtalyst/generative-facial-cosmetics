@@ -5,6 +5,7 @@ just export the variable 'strategy'
 
 ###### Imports ######
 
+from config import *
 import os
 import tensorflow as tf
 

@@ -7,8 +7,11 @@ CURRENT_OS = 'Windows'                # manually change this field every time be
 
 if CURRENT_OS.lower()[0] == 'w':
   DIR = '.'
+  DIR_OUTPUT = DIR
 elif CURRENT_OS.lower()[0] == 'c':
   DIR = 'drive/My Drive/Live Workspace/generative-facial-cosmetics/model_engineering/'
+  print("Output directories will be moved to GCS instead; make sure to authenticate GCS")
+  DIR_OUTPUT = "gs://" + "generative-facial-cosmetics" + "/"
 else:
   raise NotImplementedError('OS is not supported yet')
 

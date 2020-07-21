@@ -25,7 +25,7 @@ def generate_and_save_images(generator, epoch, test_input):
         plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
         plt.axis('off')
 
-    plt.savefig(os.path.join(DIR, 'image_at_epoch_{:04d}.png'.format(epoch)))
+    plt.savefig(os.path.join(DIR_OUTPUT, 'image_at_epoch_{:04d}.png'.format(epoch)))
     plt.show()
   except:
     print('Figure showing failed')

@@ -30,7 +30,7 @@ discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 random_latent = tf.random.normal([16, LATENT_SIZE])
 
 ## checkpoints manager
-checkpoint_dir = os.path.join(DIR, os.path.join('training_checkpoints', 'current'))
+checkpoint_dir = os.path.join(DIR_OUTPUT, os.path.join('training_checkpoints', 'current'))
 checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
 EPOCHS_TO_SAVE = 1
 MAX_TO_KEEP = 2
