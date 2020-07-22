@@ -12,7 +12,7 @@ import json
 ###### Constants ######
 
 AUTO = tf.data.experimental.AUTOTUNE
-IMAGE_SIZE = [360, 360]
+DEFAULT_IMAGE_SIZE = [360, 360]
 BATCH_SIZE = bs
 JSON = None
 
@@ -102,7 +102,9 @@ def get_json_names(dir):
   return filenames
 
 ### just call this ez func
-def get_dataset(bucket_dir, shuffle=False, batch=False, augment=False, json_dir=None):
+def get_dataset(bucket_dir, shuffle=False, batch=False, augment=False, json_dir=None, image_size=DEFAULT_IMAGE_SIZE):
+  global IMAGE_SIZE
+  IMAGE_SIZE = image_size
   if augment:
     json_map = load_jsons(get_json_names(json_dir))       # should fit into memory
   else:
