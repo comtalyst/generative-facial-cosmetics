@@ -12,10 +12,13 @@ from matplotlib import pyplot as plt
 
 ###### Functions ######
 
-def generate_and_save_images(generator, epoch, test_input):
+def generate_and_save_images(generator, epoch):
+  latent_size = generator.LATENT_SIZE
+  test_input = tf.random.normal([16, latent_size])
+
   # Notice `training` is set to False.
   # This is so all layers run in inference mode (batchnorm).
-  predictions = generator(test_input, training=False)
+  predictions = generator.model(test_input, training=False)
 
   try:
     fig = plt.figure(figsize=(4,4))

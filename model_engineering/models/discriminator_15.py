@@ -10,45 +10,53 @@ if isWindows():
 else:
   from tensorflow.keras import layers, Model
 
-###### Constants ######
+###### Class Content ######
+class Discriminator:
 
-LATENT_SIZE = 128
-IMAGE_SHAPE = (15, 15, 4)
+  ###### Constants ######
 
-###### Functions ######
+  LATENT_SIZE = 128
+  IMAGE_SHAPE = (15, 15, 4)
+  model = None
 
-def d_block(input_tensor, filters, reduce_times = 2):
-  out = layers.Conv2D(filters, 3, padding = 'same')(input_tensor)
-  out = layers.LeakyReLU(0.2)(out)
-  if reduce_times > 1:
-    out = layers.AveragePooling2D(reduce_times)(out)
-  return out
+  ###### Constructor ######
 
-def build_model(strategy):
-  with strategy.scope():
-    # Image input
-    image_input = layers.Input(IMAGE_SHAPE, name="input_image")
+  def __init__(self, strategy):
+    self.model = self.build_model(strategy)
 
-    # Size: 15x15x4
-    x = d_block(image_input, 64)
+  ###### Functions ######
 
-    # Size: 15x15x64
-    x = d_block(x, 128, 3)
+  def d_block(self, input_tensor, filters, reduce_times = 2):
+    out = layers.Conv2D(filters, 3, padding = 'same')(input_tensor)
+    out = layers.LeakyReLU(0.2)(out)
+    if reduce_times > 1:
+      out = layers.AveragePooling2D(reduce_times)(out)
+    return out
 
-    # Size: 5x5x128
-    x = layers.Conv2D(256, 3, padding = 'same')(x)
-    x = layers.LeakyReLU(0.2)(x)
-    x = layers.Flatten()(x)
+  def build_model(self, strategy):
+    d_block = self.d_block
 
-    # 1-dimensional Neural Network
-    class_output = layers.Dense(1, name="output_prob")(x)
+    with strategy.scope():
+      # Image input
+      image_input = layers.Input(self.IMAGE_SHAPE, name="input_image")
 
-    # Make Model
-    model = Model(inputs = image_input, outputs = class_output)
+      # Size: 15x15x4
+      x = d_block(image_input, 64)
 
-    model.summary()
+      # Size: 15x15x64
+      x = d_block(x, 128, 3)
 
-  return model
+      # Size: 5x5x128
+      x = layers.Conv2D(256, 3, padding = 'same')(x)
+      x = layers.LeakyReLU(0.2)(x)
+      x = layers.Flatten()(x)
 
-###### Execution ######
+      # 1-dimensional Neural Network
+      class_output = layers.Dense(1, name="output_prob")(x)
 
+      # Make Model
+      model = Model(inputs = image_input, outputs = class_output)
+
+      model.summary()
+
+    return model

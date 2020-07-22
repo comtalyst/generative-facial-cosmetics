@@ -18,16 +18,11 @@ from IPython import display
 
 ###### Constants ######
 
-LATENT_SIZE = 256
-IMAGE_SHAPE = (360, 360, 4)
 FIRSTSTEP = True
 
 ## optimizers
 generator_optimizer = tf.keras.optimizers.Adam(1e-4)
 discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
-
-## random latent vector
-random_latent = tf.random.normal([16, LATENT_SIZE])
 
 ## checkpoints manager
 checkpoint_dir = os.path.join(DIR_OUTPUT, os.path.join('training_checkpoints', 'current'))
@@ -50,22 +45,23 @@ def generator_loss(fake_output):
 
 @tf.function
 def train_step(generator, discriminator, images, batch_size, strategy):
+  latent_size = generator.LATENT_SIZE
   def true_step(images):
-    noise = tf.random.normal([batch_size, LATENT_SIZE])
+    noise = tf.random.normal([batch_size, latent_size])
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-      generated_images = generator(noise, training=True)
+      generated_images = generator.model(noise, training=True)
 
-      real_output = discriminator(images, training=True)
-      fake_output = discriminator(generated_images, training=True)
+      real_output = discriminator.model(images, training=True)
+      fake_output = discriminator.model(generated_images, training=True)
 
       gen_loss = generator_loss(fake_output)
       disc_loss = discriminator_loss(real_output, fake_output)
 
-    gradients_of_generator = gen_tape.gradient(gen_loss, generator.trainable_variables)
-    gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.trainable_variables)
+    gradients_of_generator = gen_tape.gradient(gen_loss, generator.model.trainable_variables)
+    gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.model.trainable_variables)
 
-    generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.trainable_variables))
-    discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.trainable_variables))
+    generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.model.trainable_variables))
+    discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.model.trainable_variables))
   if isColab():
     strategy.run(true_step, args=(images,))       # make sure this is a tuple using ','
   else:
@@ -75,8 +71,8 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
   global FIRSTSTEP
   ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                              discriminator_optimizer=discriminator_optimizer,
-                             generator=generator,
-                             discriminator=discriminator)
+                             generator=generator.model,
+                             discriminator=discriminator.model)
   ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=MAX_TO_KEEP)
 
   # if a checkpoint exists, restore the latest checkpoint.
@@ -98,7 +94,7 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
       display.clear_output(wait=True)
     except:
       pass
-    generate_and_save_images(generator, epoch + 1, random_latent)
+    generate_and_save_images(generator, epoch + 1)
 
     # Save the model every EPOCHS_TO_SAVE epochs
     if (epoch + 1) % EPOCHS_TO_SAVE == 0:
@@ -112,6 +108,6 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
     display.clear_output(wait=True)
   except:
     pass
-  generate_and_save_images(generator, epochs, random_latent)
+  generate_and_save_images(generator, epochs)
 
 ###### Execution ######
