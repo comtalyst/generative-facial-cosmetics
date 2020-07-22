@@ -27,7 +27,7 @@ def d_block(input_tensor, filters, reduce_times = 2):
 def build_model(strategy):
   with strategy.scope():
     # Image input
-    image_input = layers.Input(IMAGE_SHAPE)
+    image_input = layers.Input(IMAGE_SHAPE, name="input_image")
 
     # Size: 360x360x4
     x = d_block(image_input, 8)
@@ -53,7 +53,7 @@ def build_model(strategy):
     x = layers.Flatten()(x)
 
     # 1-dimensional Neural Network
-    class_output = layers.Dense(1)(x)
+    class_output = layers.Dense(1, name="output_prob")(x)
 
     # Make Model
     model = Model(inputs = image_input, outputs = class_output)

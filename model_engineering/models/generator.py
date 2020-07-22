@@ -48,14 +48,14 @@ def g_block(input_tensor, latent_vector, filters, upsamp=2):
 def build_model(strategy):
   with strategy.scope():
     # Latent input
-    latent_input = layers.Input([LATENT_SIZE])
+    latent_input = layers.Input([LATENT_SIZE], name="input_latent")
 
     # Map latent input
     latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent_input)
     latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent)
     latent = layers.Dense(units=LATENT_SIZE, activation = 'relu')(latent)
 
-    # Reshape to 3x3x64
+    # Reshape to 5x5x256
     x = layers.Dense(units=5*5*LATENT_SIZE, activation = 'relu')(latent_input)
     x = layers.Reshape([5, 5, LATENT_SIZE])(x)
 
@@ -78,7 +78,7 @@ def build_model(strategy):
     x = g_block(x, latent, 8)
 
     # Size: 360x360x8, make RGB with values between 0 and 1
-    image_output = layers.Conv2D(4, 1, padding = 'same', activation = 'sigmoid')(x)
+    image_output = layers.Conv2D(4, 1, padding = 'same', activation = 'sigmoid', name="output_image")(x)
 
     # Make Model
     model = Model(inputs = latent_input, outputs = image_output)
