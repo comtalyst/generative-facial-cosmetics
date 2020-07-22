@@ -26,7 +26,8 @@ discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 
 ## checkpoints manager
 checkpoint_dir = os.path.join(DIR_OUTPUT, os.path.join('training_checkpoints', 'current'))
-checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
+checkpoint_prefix_name = "ckpt"
+checkpoint_prefix = os.path.join(checkpoint_dir, checkpoint_prefix_name)
 EPOCHS_TO_SAVE = 1
 MAX_TO_KEEP = 2
 RESTORE_CHECKPOINT = True
@@ -78,9 +79,14 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
   # if a checkpoint exists, restore the latest checkpoint.
   if RESTORE_CHECKPOINT and ckpt_manager.latest_checkpoint:
       ckpt.restore(ckpt_manager.latest_checkpoint)
-      print ('Latest checkpoint restored!!')
+      last_epoch = int(os.path.split(ckpt_manager.latest_checkpoint)[1][len(checkpoint_prefix_name)+1:])
+      print ('Latest checkpoint restored: ' + str(last_epoch))
+      
+  else:
+    last_epoch = 0
 
-  for epoch in range(epochs):
+  allstart = time.time()
+  for epoch in range(last_epoch, epochs):
     start = time.time()
 
     for image_batch in dataset:
@@ -96,18 +102,15 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
       pass
     generate_and_save_images(generator, epoch + 1)
 
-    # Save the model every EPOCHS_TO_SAVE epochs
+    print ('Time for epoch {} is {} sec, total {} sec'.format(epoch + 1, time.time()-start, time.time()-allstart))
+    # Save the model every EPOCHS_TO_SAVE epochs (not include in time)
     if (epoch + 1) % EPOCHS_TO_SAVE == 0:
-      ckpt_save_path = ckpt_manager.save()         # use .write instead of .save in @tf.function
+      ckpt_save_path = ckpt_manager.save()
       print ('Saving checkpoint for epoch {} at {}'.format(epoch+1, ckpt_save_path))
+    
 
-    print ('Time for epoch {} is {} sec'.format(epoch + 1, time.time()-start))
-
-  # Generate after the final epoch
-  try:
-    display.clear_output(wait=True)
-  except:
-    pass
-  generate_and_save_images(generator, epochs)
-
-###### Execution ######
+  # saving last epoch, unless it has been saved
+  if epochs % EPOCHS_TO_SAVE != 0:
+    ckpt_save_path = ckpt_manager.save()
+    print ('Saving checkpoint for epoch {} at {}'.format(epochs, ckpt_save_path))
+ 
