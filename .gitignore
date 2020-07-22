@@ -7,4 +7,4 @@ dataset_engineering/outputs/anomalies
 *.jpg
 *.cpython-37.pyc
 *.pyc
-model_engineering/training_checkpoints
+model_engineering/outputs
