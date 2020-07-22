@@ -25,7 +25,7 @@ def generate_and_save_images(generator, epoch):
 
     for i in range(predictions.shape[0]):
         plt.subplot(4, 4, i+1)
-        plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5, cmap='gray')
+        plt.imshow(predictions[i, :, :, 0] * 127.5 + 127.5)
         plt.axis('off')
 
     plt.savefig(os.path.join(DIR_OUTPUT, 'image_at_epoch_{:04d}.png'.format(epoch)))
