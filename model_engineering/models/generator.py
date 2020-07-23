@@ -88,7 +88,7 @@ class Generator:
   def output_block(self, input_tensor, channels=4):
     self.OUTPUT_BLOCK_LEN = 1
     # make RGBA with values between 0 and 1
-    return layers.Conv2D(channels, 1, padding = 'same', activation = 'sigmoid', name="output_image")(input_tensor)
+    return layers.Conv2D(channels, 1, padding = 'same', activation = 'sigmoid')(input_tensor)
 
   ## build model (pre-progress)
   def build_model(self, strategy):
@@ -98,7 +98,7 @@ class Generator:
 
     with strategy.scope():
       # Latent input
-      latent_input = layers.Input([self.LATENT_SIZE], name="input_latent")
+      latent_input = layers.Input([self.LATENT_SIZE])
 
       # Map latent input
       latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent_input)

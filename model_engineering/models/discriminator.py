@@ -64,7 +64,7 @@ class Discriminator:
   def input_block(self, shape, filters):
     self.INPUT_BLOCK_LEN = 3
     # Image input
-    image_input = layers.Input(shape, name="input_image")
+    image_input = layers.Input(shape)
     # expand filters without affecting other variables (this layer will be deleted in the next generation)
     x = layers.Conv2D(filters, 1, padding = 'same')(image_input)
     x = layers.LeakyReLU(0.2)(x)
@@ -83,7 +83,7 @@ class Discriminator:
       # convert to prob for decision using 1-dimensional Neural Network
       x = d_block(x, 512, reduce_times = 1)
       x = layers.Flatten()(x)
-      x = layers.Dense(1, name="output_prob")(x)
+      x = layers.Dense(1)(x)
 
       # Make Model
       model = Model(inputs = image_input, outputs = x)
