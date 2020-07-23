@@ -41,14 +41,14 @@ class Discriminator:
     model.save(fname)
   
   # either specify dir/fname or path (path takes priority)
-  def load(self, dir = None, fname = None, path = None):
+  def load(self, its_progress, dir = None, fname = None, path = None):
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
     if fname == None and path == None:
       raise ValueError("Please specify either fname or path")
     if path == None:
       path = os.path.join(dir, fname)
-    # TODO: load current_progress variable
+    current_progress = its_progress
     self.model = models.load_model(path)
 
   ###### Functions ######
