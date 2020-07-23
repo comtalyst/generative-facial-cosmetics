@@ -60,26 +60,28 @@ class Discriminator:
       out = layers.AveragePooling2D(reduce_times)(out)
     return out
   
-  def output_block(self, input_tensor, units=512):
-    self.OUTPUT_BLOCK_LEN = 4
-
-    x = layers.Conv2D(units, 3, padding = 'same')(input_tensor)
+  def input_block(self, shape, filters):
+    self.INPUT_BLOCK_LEN = 3
+    # Image input
+    image_input = layers.Input(shape, name="input_image")
+    # expand filters without affecting other variables (this layer will be deleted in the next generation)
+    x = layers.Conv2D(filters, 1, padding = 'same')(image_input)
     x = layers.LeakyReLU(0.2)(x)
-    x = layers.Flatten()(x)
-    # 1-dimensional Neural Network
-    return layers.Dense(1, name="output_prob")(x)
-
+    return x, image_input
+    
   def build_model(self, strategy):
     d_block = self.d_block
-    output_block = self.output_block
+    input_block = self.input_block
 
     with strategy.scope():
       # Image input
-      image_input = layers.Input(self.IMAGE_SHAPE, name="input_image")
-      # Size: 360x360x4
+      x, image_input = input_block((5, 5, 4), 256)
+      # Size: 5x5x256
 
-      # convert to prob for decision
-      class_output = output_block(image_input)
+      # convert to prob for decision using 1-dimensional Neural Network
+      x = d_block(x, 512, reduce_times = 1)
+      x = layers.Flatten()(x)
+      return layers.Dense(1, name="output_prob")(x)
 
       # Make Model
       model = Model(inputs = image_input, outputs = class_output)
@@ -91,7 +93,7 @@ class Discriminator:
   ## GAN progressive training: add layers
   def progress_model(self, model, strategy):
     d_block = self.d_block
-    output_block = self.output_block
+    input_block = self.input_block
     current_progress = self.current_progress
 
     if current_progress >= self.MAX_PROGRESS:
@@ -100,36 +102,49 @@ class Discriminator:
     current_progress += 1
 
     with strategy.scope():
-      # get last layer before output (before reducing to 1 neuron)
-      x = model.layers[-(self.OUTPUT_BLOCK_LEN+1)].output
+      # cut the input block from the previous generation
+      # the preferred input shape for this should be the last "after-input" shape
+      y = model.layers[self.INPUT_BLOCK_LEN].output
 
       if current_progress == 1:
-        x = d_block(x, 8)
-        # Size: 180x180x8
-
-      elif current_progress == 2:
-        x = d_block(x, 16)
-        # Size: 90x90x16
-
-      elif current_progress == 3:
-        x = d_block(x, 32)
-        # Size: 45x45x32
-
-      elif current_progress == 4:
-        x = d_block(x, 64, 3)
+        x, image_input = input_block((15, 15, 4), 64)
         # Size: 15x15x64
         x = d_block(x, 128, 1)
         # Size: 15x15x128
-
-      elif current_progress == 5:
         x = d_block(x, 256, 3)
         # Size: 5x5x256
+        # should now be match with y's preferred input shape
+
+      elif current_progress == 2:
+        x, image_input = input_block((45, 45, 4), 32)
+        # Size: 45x45x32
+        x = d_block(x, 64, 3)
+        # Size: 15x15x64
+
+      elif current_progress == 3:
+        x, image_input = input_block((90, 90, 4), 16)
+        # Size: 90x90x16
+        x = d_block(x, 32, 2)
+        # Size: 45x45x32
+
+      elif current_progress == 4:
+        x, image_input = input_block((180, 180, 4), 8)
+        # Size: 180x180x8
+        x = d_block(x, 16, 2)
+        # Size: 90x90x16
+
+      elif current_progress == 5:
+        x, image_input = input_block((360, 360, 4), 4)
+        # Size: 360x360x4
+        x = d_block(image_input, 8)
+        # Size: 180x180x8
       
-      # convert to prob for decision
-      class_output = output_block(x)
+      # continue on with the model
+      for i in range(self.INPUT_BLOCK_LEN, len(model.layers)):
+        x = model.layers[i](x)
 
       # Make new model on top of the old model
-      model = Model(inputs = model.input, outputs = class_output)
+      model = Model(inputs = image_input, outputs = x)
 
       model.summary()
     
