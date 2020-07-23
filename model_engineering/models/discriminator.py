@@ -134,6 +134,7 @@ class Discriminator:
       model.summary()
     
     # return progressed model
+    print("The model progressed to level " + str(current_progress))
     return model
 
 
