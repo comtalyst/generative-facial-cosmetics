@@ -16,7 +16,7 @@ class Discriminator:
   ###### Constants ######
 
   LATENT_SIZE = 256
-  IMAGE_SHAPE = (360, 360, 4)
+  FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
   model = None
 
@@ -75,6 +75,7 @@ class Discriminator:
 
     with strategy.scope():
       # Image input
+      self.image_shape = (5, 5, 4)
       x, image_input = input_block((5, 5, 4), 256)
       # Size: 5x5x256
 
@@ -107,6 +108,7 @@ class Discriminator:
       y = model.layers[self.INPUT_BLOCK_LEN].output
 
       if current_progress == 1:
+        self.image_shape = (15, 15, 4)
         x, image_input = input_block((15, 15, 4), 64)
         # Size: 15x15x64
         x = d_block(x, 128, 1)
@@ -116,24 +118,28 @@ class Discriminator:
         # should now be match with y's preferred input shape
 
       elif current_progress == 2:
+        self.image_shape = (45, 45, 4)
         x, image_input = input_block((45, 45, 4), 32)
         # Size: 45x45x32
         x = d_block(x, 64, 3)
         # Size: 15x15x64
 
       elif current_progress == 3:
+        self.image_shape = (90, 90, 4)
         x, image_input = input_block((90, 90, 4), 16)
         # Size: 90x90x16
         x = d_block(x, 32, 2)
         # Size: 45x45x32
 
       elif current_progress == 4:
+        self.image_shape = (180, 180, 4)
         x, image_input = input_block((180, 180, 4), 8)
         # Size: 180x180x8
         x = d_block(x, 16, 2)
         # Size: 90x90x16
 
       elif current_progress == 5:
+        self.image_shape = (360, 360, 4)
         x, image_input = input_block((360, 360, 4), 4)
         # Size: 360x360x4
         x = d_block(image_input, 8)

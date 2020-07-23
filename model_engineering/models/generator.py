@@ -16,7 +16,7 @@ class Generator:
   ###### Constants ######
 
   LATENT_SIZE = 256
-  IMAGE_SHAPE = (360, 360, 4)
+  FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
   model = None
 
@@ -108,6 +108,7 @@ class Generator:
       x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent_input)
       x = layers.Reshape([5, 5, self.LATENT_SIZE])(x)
       # Size: 5x5x256
+      self.image_shape = (5, 5, 4)
 
       # output RGBA image
       image_output = output_block(x)
@@ -140,22 +141,27 @@ class Generator:
         # Size: 15x15x256
         x = g_block(x, latent, 128, 1)
         # Size: 15x15x128
+        self.image_shape = (15, 15, 4)
 
       elif current_progress == 2:
         x = g_block(x, latent, 64, 3)
         # Size: 45x45x64
+        self.image_shape = (45, 45, 4)
 
       elif current_progress == 3:
         x = g_block(x, latent, 32)
         # Size: 90x90x32
+        self.image_shape = (90, 90, 4)
 
       elif current_progress == 4:
         x = g_block(x, latent, 16)
         # Size: 180x180x16
+        self.image_shape = (180, 180, 4)
 
       elif current_progress == 5:
         x = g_block(x, latent, 8)
         # Size: 360x360x8
+        self.image_shape = (360, 360, 4)
       
       # output RGBA image
       image_output = output_block(x)
