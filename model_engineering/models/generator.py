@@ -38,7 +38,7 @@ class Generator:
 
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
-    fname = "generator" + "-p_" + str(current_progress) + "-e_" + str(epoch) + ".h5"
+    fname = "generator" + "-p_" + str(self.current_progress) + "-e_" + str(epoch) + ".h5"
     model.save(fname)
 
   # either specify dir/fname or path (path takes priority)
@@ -49,7 +49,7 @@ class Generator:
       raise ValueError("Please specify either fname or path")
     if path == None:
       path = os.path.join(dir, fname)
-    current_progress = its_progress
+    self.current_progress = its_progress
     self.model = models.load_model(path)
     
 
