@@ -5,6 +5,7 @@
 from config import *
 import tensorflow as tf
 from tensorflow import keras
+import os
 if isWindows():
   from tensorflow_core.python.keras.api._v2.keras import layers, Model, models
 else:
