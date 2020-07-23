@@ -104,12 +104,12 @@ class Generator:
       latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent_input)
       latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
       latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
-      self.MAPPING_BLOCK_LEN = 3
 
       # Reshape to 5x5x256
-      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent_input)
+      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent)
       x = layers.Reshape([5, 5, self.LATENT_SIZE])(x)
       # Size: 5x5x256
+      self.MAPPING_BLOCK_LEN = 5
       self.image_shape = (5, 5, 4)
 
       # output RGBA image

@@ -15,7 +15,7 @@ class Generator:
 
   ###### Constants ######
 
-  LATENT_SIZE = 128
+  LATENT_SIZE = 256
   IMAGE_SHAPE = (15, 15, 4)
   model = None
 
@@ -70,7 +70,7 @@ class Generator:
       latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
 
       # Reshape to 5x5x128
-      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent_input)
+      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent)
       x = layers.Reshape([5, 5, self.LATENT_SIZE])(x)
 
       # Size: 5x5x128
