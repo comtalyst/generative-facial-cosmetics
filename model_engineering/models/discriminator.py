@@ -6,7 +6,7 @@ from config import *
 import tensorflow as tf
 from tensorflow import keras
 if isWindows():
-  from tensorflow_core.python.keras.api._v2.keras import layers, Model
+  from tensorflow_core.python.keras.api._v2.keras import layers, Model, models
 else:
   from tensorflow.keras import layers, Model
 
@@ -38,7 +38,7 @@ class Discriminator:
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
     fname = "discriminator" + "-p_" + str(current_progress) + "-e_" + str(epoch) + ".h5"
-    model.save_weights(fname)
+    model.save(fname)
   
   # either specify dir/fname or path (path takes priority)
   def load(self, dir = None, fname = None, path = None):
@@ -48,7 +48,8 @@ class Discriminator:
       raise ValueError("Please specify either fname or path")
     if path == None:
       path = os.path.join(dir, fname)
-    self.model.load_weights(path)
+    # TODO: load current_progress variable
+    self.model = models.load_model(path)
 
   ###### Functions ######
 
