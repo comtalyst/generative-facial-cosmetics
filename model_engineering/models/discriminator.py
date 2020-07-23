@@ -82,10 +82,10 @@ class Discriminator:
       # convert to prob for decision using 1-dimensional Neural Network
       x = d_block(x, 512, reduce_times = 1)
       x = layers.Flatten()(x)
-      return layers.Dense(1, name="output_prob")(x)
+      x = layers.Dense(1, name="output_prob")(x)
 
       # Make Model
-      model = Model(inputs = image_input, outputs = class_output)
+      model = Model(inputs = image_input, outputs = x)
 
       model.summary()
 
