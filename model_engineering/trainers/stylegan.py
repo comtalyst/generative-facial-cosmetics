@@ -30,7 +30,6 @@ checkpoint_prefix_name = "ckpt"
 checkpoint_prefix = os.path.join(checkpoint_dir, checkpoint_prefix_name)
 EPOCHS_TO_SAVE = 1
 MAX_TO_KEEP = 2
-RESTORE_CHECKPOINT = True
 
 ###### Functions ######
 
@@ -68,7 +67,7 @@ def train_step(generator, discriminator, images, batch_size, strategy):
   else:
     true_step(images)
 
-def train(generator, discriminator, dataset, epochs, batch_size, strategy):
+def train(generator, discriminator, dataset, epochs, batch_size, strategy, restore_checkpoint=True):
   global FIRSTSTEP
   ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                              discriminator_optimizer=discriminator_optimizer,
@@ -77,12 +76,15 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy):
   ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=MAX_TO_KEEP)
 
   # if a checkpoint exists, restore the latest checkpoint.
-  if RESTORE_CHECKPOINT and ckpt_manager.latest_checkpoint:
+  if restore_checkpoint and ckpt_manager.latest_checkpoint:
       ckpt.restore(ckpt_manager.latest_checkpoint)
       last_epoch = int(os.path.split(ckpt_manager.latest_checkpoint)[1][len(checkpoint_prefix_name)+1:])
       print ('Latest checkpoint restored: ' + str(last_epoch))
-      
-  else:
+  else :
+    if restore_checkpoint:
+      print("No checkpoints to be restored")
+    elif ckpt_manager.latest_checkpoint:
+      print("Checkpoints found, but will be ignored and replaced")
     last_epoch = 0
 
   allstart = time.time()
