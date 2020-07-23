@@ -75,7 +75,7 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy, resto
                              discriminator_optimizer=discriminator_optimizer,
                              generator=generator.model,
                              discriminator=discriminator.model)
-  checkpoint_dir_progress = os.path.join(checkpoint_dir, generator.current_progress)
+  checkpoint_dir_progress = os.path.join(checkpoint_dir, str(generator.current_progress))
   ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir_progress, max_to_keep=MAX_TO_KEEP)
 
   # if a checkpoint exists, restore the latest checkpoint.
