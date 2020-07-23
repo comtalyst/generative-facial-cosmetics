@@ -26,8 +26,6 @@ discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
 
 ## checkpoints manager
 checkpoint_dir = os.path.join(DIR_OUTPUT, os.path.join('training_checkpoints', 'current'))
-checkpoint_prefix_name = "ckpt"
-checkpoint_prefix = os.path.join(checkpoint_dir, checkpoint_prefix_name)
 EPOCHS_TO_SAVE = 1
 MAX_TO_KEEP = 2
 
@@ -78,7 +76,7 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy, resto
   # if a checkpoint exists, restore the latest checkpoint.
   if restore_checkpoint and ckpt_manager.latest_checkpoint:
       ckpt.restore(ckpt_manager.latest_checkpoint)
-      last_epoch = int(os.path.split(ckpt_manager.latest_checkpoint)[1][len(checkpoint_prefix_name)+1:])
+      last_epoch = int(os.path.split(ckpt_manager.latest_checkpoint)[1][5:])
       print ('Latest checkpoint restored: ' + str(last_epoch))
   else :
     if restore_checkpoint:
