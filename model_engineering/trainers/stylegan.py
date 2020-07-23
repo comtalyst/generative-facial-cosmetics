@@ -66,12 +66,17 @@ def train_step(generator, discriminator, images, batch_size, strategy):
     true_step(images)
 
 def train(generator, discriminator, dataset, epochs, batch_size, strategy, restore_checkpoint=True):
+  if generator.current_progress != discriminator.current_progress:
+    raise ValueError("The progresses of generator " + str(generator.current_progress) + 
+                    " and discriminator " + str(discriminator.current_progress) + " are not equal")
+
   global FIRSTSTEP
   ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                              discriminator_optimizer=discriminator_optimizer,
                              generator=generator.model,
                              discriminator=discriminator.model)
-  ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir, max_to_keep=MAX_TO_KEEP)
+  checkpoint_dir_progress = os.path.join(checkpoint_dir, generator.current_progress)
+  ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir_progress, max_to_keep=MAX_TO_KEEP)
 
   # if a checkpoint exists, restore the latest checkpoint.
   if restore_checkpoint and ckpt_manager.latest_checkpoint:
