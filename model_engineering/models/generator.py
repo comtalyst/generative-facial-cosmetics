@@ -104,6 +104,7 @@ class Generator:
       latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent_input)
       latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
       latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
+      self.MAPPING_BLOCK_LEN = 3
 
       # Reshape to 5x5x256
       x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent_input)
@@ -136,6 +137,7 @@ class Generator:
     with strategy.scope():
       # get last layer before output (before reducing to 4 channels)
       x = model.layers[-(self.OUTPUT_BLOCK_LEN+1)].output
+      latent = model.layers[self.MAPPING_BLOCK_LEN].output            # indexing included input block (1)
 
       if current_progress == 1:
         x = g_block(x, latent, 256, 3)
