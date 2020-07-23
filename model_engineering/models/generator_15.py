@@ -15,7 +15,7 @@ class Generator:
 
   ###### Constants ######
 
-  LATENT_SIZE = 256
+  LATENT_SIZE = 128
   IMAGE_SHAPE = (15, 15, 4)
   model = None
 
