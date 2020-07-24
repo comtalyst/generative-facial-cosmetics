@@ -32,6 +32,7 @@ class Generator:
   ###### Public Methods ######
 
   def progress(self, strategy):
+    self.current_progress += 1
     self.model = self.progress_model(self.model, strategy)
   
   def save(self, epoch, dir = None):
