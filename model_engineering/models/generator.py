@@ -21,6 +21,14 @@ class Generator:
   FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
   model = None
+  image_shapes = {
+    0: (5, 5, 4),
+    1: (15, 15, 4),
+    2: (45, 45, 4),
+    3: (90, 90, 4),
+    4: (180, 180, 4),
+    5: (360, 360, 4)
+  }
 
   current_progress = 0              # for GAN progressive training
 
@@ -55,6 +63,7 @@ class Generator:
     self.current_progress = its_progress
     self.model = models.load_model(path)
     self.model.summary()
+    self.image_shape = self.image_shapes[self.current_progress]
 
   ###### Functions ######
 
