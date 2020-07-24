@@ -90,7 +90,8 @@ class Generator:
   def output_block(self, input_tensor, channels=4):
     self.OUTPUT_BLOCK_LEN = 1
     # make RGBA with values between 0 and 1
-    return layers.Conv2D(channels, 1, padding = 'same', activation = 'sigmoid')(input_tensor)
+    x = layers.Conv2D(channels, 1, padding = 'same', activation = 'sigmoid')(input_tensor)
+    return x
 
   ## build model (pre-progress)
   def build_model(self, strategy):
