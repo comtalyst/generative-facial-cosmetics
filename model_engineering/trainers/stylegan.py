@@ -71,24 +71,25 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy, resto
                     " and discriminator " + str(discriminator.current_progress) + " are not equal")
 
   global FIRSTSTEP
-  ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
-                             discriminator_optimizer=discriminator_optimizer,
-                             generator=generator.model,
-                             discriminator=discriminator.model)
-  checkpoint_dir_progress = os.path.join(checkpoint_dir, str(generator.current_progress))
-  ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir_progress, max_to_keep=MAX_TO_KEEP)
+  with strategy.scope():
+    ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
+                              discriminator_optimizer=discriminator_optimizer,
+                              generator=generator.model,
+                              discriminator=discriminator.model)
+    checkpoint_dir_progress = os.path.join(checkpoint_dir, str(generator.current_progress))
+    ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir_progress, max_to_keep=MAX_TO_KEEP)
 
-  # if a checkpoint exists, restore the latest checkpoint.
-  if restore_checkpoint and ckpt_manager.latest_checkpoint:
-      ckpt.restore(ckpt_manager.latest_checkpoint)
-      last_epoch = int(os.path.split(ckpt_manager.latest_checkpoint)[1][5:])
-      print ('Latest checkpoint restored: ' + str(last_epoch))
-  else :
-    if restore_checkpoint:
-      print("No checkpoints to be restored")
-    elif ckpt_manager.latest_checkpoint:
-      print("Checkpoints found, but will be ignored and replaced")
-    last_epoch = 0
+    # if a checkpoint exists, restore the latest checkpoint.
+    if restore_checkpoint and ckpt_manager.latest_checkpoint:
+        ckpt.restore(ckpt_manager.latest_checkpoint)
+        last_epoch = int(os.path.split(ckpt_manager.latest_checkpoint)[1][5:])
+        print ('Latest checkpoint restored: ' + str(last_epoch))
+    else :
+      if restore_checkpoint:
+        print("No checkpoints to be restored")
+      elif ckpt_manager.latest_checkpoint:
+        print("Checkpoints found, but will be ignored and replaced")
+      last_epoch = 0
 
   allstart = time.time()
   for epoch in range(last_epoch, epochs):
