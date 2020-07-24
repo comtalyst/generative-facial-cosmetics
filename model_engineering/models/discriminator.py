@@ -44,13 +44,14 @@ class Discriminator:
     self.current_progress += 1
   
   # save to SavedModel
-  def save(self, epoch, dir = None):
+  def save(self, epoch, strategy, dir = None):
     model = self.model
 
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
     fname = "discriminator" + "-p_" + str(self.current_progress) + "-e_" + str(epoch)
-    model.save(os.path.join(dir, fname))
+    with strategy.scope():
+      model.save(os.path.join(dir, fname))
 
   # either specify dir/fname or path (path takes priority)
   def load(self, its_progress, strategy, dir = None, fname = None, path = None):
