@@ -6,6 +6,7 @@ from config import *
 import tensorflow as tf
 from tensorflow import keras
 import os
+import h5py
 if isWindows():
   from tensorflow_core.python.keras.api._v2.keras import layers, Model, models
 else:
@@ -39,7 +40,7 @@ class Discriminator:
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
     fname = "discriminator" + "-p_" + str(self.current_progress) + "-e_" + str(epoch) + ".h5"
-    model.save(fname)
+    model.save(os.path.join(dir, fname))
   
   # either specify dir/fname or path (path takes priority)
   def load(self, its_progress, dir = None, fname = None, path = None):
@@ -50,7 +51,8 @@ class Discriminator:
     if path == None:
       path = os.path.join(dir, fname)
     self.current_progress = its_progress
-    self.model = models.load_model(path)
+    self.model = models.load_model(h5py.File(path, 'r'))
+    self.model.summary()
 
   ###### Functions ######
 
