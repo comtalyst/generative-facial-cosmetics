@@ -65,6 +65,24 @@ def train_step(generator, discriminator, images, batch_size, strategy):
   else:
     true_step(images)
 
+# load checkpoint without training, intended to have similar function as loading models
+def load_checkpoint(generator, discriminator, strategy):
+  with strategy.scope():
+    ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
+                              discriminator_optimizer=discriminator_optimizer,
+                              generator=generator.model,
+                              discriminator=discriminator.model)
+    checkpoint_dir_progress = os.path.join(checkpoint_dir, str(generator.current_progress))
+    ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir_progress, max_to_keep=MAX_TO_KEEP)
+
+    # if a checkpoint exists, restore the latest checkpoint.
+    if ckpt_manager.latest_checkpoint:
+        ckpt.restore(ckpt_manager.latest_checkpoint)
+        last_epoch = int(os.path.split(ckpt_manager.latest_checkpoint)[1][5:])
+        print ('Latest checkpoint restored: ' + str(last_epoch))
+    else :
+      print("No checkpoints to be restored")
+
 def train(generator, discriminator, dataset, epochs, batch_size, strategy, restore_checkpoint=True):
   if generator.current_progress != discriminator.current_progress:
     raise ValueError("The progresses of generator " + str(generator.current_progress) + 
