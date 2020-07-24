@@ -53,7 +53,7 @@ class Generator:
     model.save(os.path.join(dir, fname))
 
   # either specify dir/fname or path (path takes priority)
-  def load(self, its_progress, dir = None, fname = None, path = None):
+  def load(self, its_progress, strategy, dir = None, fname = None, path = None):
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
     if fname == None and path == None:
@@ -61,8 +61,9 @@ class Generator:
     if path == None:
       path = os.path.join(dir, fname)
     self.current_progress = its_progress
-    self.model = models.load_model(path)
-    self.model.summary()
+    with strategy.scope():
+      self.model = models.load_model(path)
+      self.model.summary()
     self.image_shape = self.image_shapes[self.current_progress]
 
   ###### Functions ######
