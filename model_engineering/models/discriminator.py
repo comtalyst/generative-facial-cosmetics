@@ -35,14 +35,15 @@ class Discriminator:
     self.model = self.progress_model(self.model, strategy)
     self.current_progress += 1
   
+  # save to SavedModel
   def save(self, epoch, dir = None):
     model = self.model
 
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
-    fname = "discriminator" + "-p_" + str(self.current_progress) + "-e_" + str(epoch) + ".h5"
+    fname = "discriminator" + "-p_" + str(self.current_progress) + "-e_" + str(epoch)
     model.save(os.path.join(dir, fname))
-  
+
   # either specify dir/fname or path (path takes priority)
   def load(self, its_progress, dir = None, fname = None, path = None):
     if dir == None:
@@ -52,7 +53,7 @@ class Discriminator:
     if path == None:
       path = os.path.join(dir, fname)
     self.current_progress = its_progress
-    self.model = models.load_model(h5py.File(path, 'r'))
+    self.model = models.load_model(path)
     self.model.summary()
 
   ###### Functions ######
