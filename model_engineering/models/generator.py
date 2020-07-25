@@ -82,6 +82,13 @@ class Generator:
     
     # Multiply by x[1] (GAMMA) and add x[2] (BETA)
     return y * scale + bias
+  
+  def mapping_block(self, latent_input):
+    self.MAPPING_BLOCK_LEN = 3
+    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent_input)
+    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
+    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
+    return latent
 
   def g_block(self, input_tensor, latent_vector, filters, upsamp=2):
     AdaIN = self.AdaIN
@@ -110,16 +117,14 @@ class Generator:
     AdaIN = self.AdaIN
     g_block = self.g_block
     output_block = self.output_block
+    mapping_block = self.mapping_block
 
     with strategy.scope():
       # Latent input
       latent_input = layers.Input([self.LATENT_SIZE])
 
       # Map latent input
-      latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent_input)
-      latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
-      latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
-      self.MAPPING_BLOCK_LEN = 3
+      latent = mapping_block(latent_input)
 
       # Reshape to 5x5x256
       x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent)
