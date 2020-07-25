@@ -91,6 +91,7 @@ class Generator:
     return latent
 
   def g_block(self, input_tensor, latent_vector, filters, upsamp=2):
+    # Warning: this block is not a straight line!
     AdaIN = self.AdaIN
 
     gamma = layers.Dense(units=filters, bias_initializer = 'ones')(latent_vector)
