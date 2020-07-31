@@ -20,7 +20,7 @@ class WeightedSum(layers.Add):
   def __init__(self, alpha=0.0, **kwargs):
     super(WeightedSum, self).__init__(**kwargs)
     #self.alpha = backend.variable(alpha, name='ws_alpha')
-    self.alpha = tf.Variable(alpha, name='ws_alpha', aggregation=tf.VariableAggregation.SUM)
+    self.alpha = tf.Variable(alpha, name='ws_alpha', aggregation=tf.VariableAggregation.ONLY_FIRST_REPLICA)
 
   ###### Overrides ######
   def _merge_function(self, inputs):
