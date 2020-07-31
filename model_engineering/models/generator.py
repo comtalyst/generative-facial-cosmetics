@@ -7,10 +7,11 @@ import tensorflow as tf
 from tensorflow import keras
 import os
 import h5py
+from models.custom_layers.WeightedSum import WeightedSum
 if isWindows():
-  from tensorflow_core.python.keras.api._v2.keras import layers, Model, models
+  from tensorflow_core.python.keras.api._v2.keras import layers, Model, models, backend
 else:
-  from tensorflow.keras import layers, Model, models
+  from tensorflow.keras import layers, Model, models, backend
 
 ###### Class Content ######
 class Generator:
@@ -21,6 +22,7 @@ class Generator:
   FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
   model = None
+  model_fade = None         # fading-to-grown model
   image_shapes = {
     0: (5, 5, 4),
     1: (15, 15, 4),
@@ -36,14 +38,15 @@ class Generator:
 
   def __init__(self, strategy):
     self.model = self.build_model(strategy)
+    self.model_fade = self.model    # placeholder for checkpointing
   
   ###### Public Methods ######
 
   def progress(self, strategy):
-    self.model = self.progress_model(self.model, strategy)
+    self.model, self.model_fade = self.progress_model(self.model, strategy)
     self.current_progress += 1
   
-  # save to SavedModel
+  # save to SavedModel (does not include fade)
   def save(self, epoch, strategy, dir = None):
     model = self.model
 
@@ -66,6 +69,16 @@ class Generator:
       self.model = models.load_model(path)
       self.model.summary()
     self.image_shape = self.image_shapes[self.current_progress]
+
+  # set alpha value for fading-in model
+  def setAlpha(self, new_alpha):
+    found = False
+    for layer in self.model_fade.layers:
+      if isinstance(layer, WeightedSum):
+        backend.set_value(layer.alpha, new_alpha)
+        found = True
+    if not found:
+      raise RuntimeError("Cannot set alpha on undefined model_fade; make sure this is not a first-gen model")
 
   ###### Functions ######
 
@@ -144,6 +157,11 @@ class Generator:
     return model
   
   ## GAN progressive training: add layers
+  '''
+  Fading Generator: 
+	  Full: Old Pre-Output Block --> Upsampling --> Conv/AdaIN --> New Output Block --> COMBINE THE RESULTING IMAGES
+	  Samp: Old Pre-Output Block --> Upsampling --> Old Output Block ----------------->
+  '''
   def progress_model(self, model, strategy):
     AdaIN = self.AdaIN
     g_block = self.g_block
@@ -157,45 +175,61 @@ class Generator:
 
     with strategy.scope():
       # get layers from old model
-      x = model.layers[-(self.OUTPUT_BLOCK_LEN+1)].output
+      old_output = model.layers[-(self.OUTPUT_BLOCK_LEN+1)].output
       latent = model.layers[self.MAPPING_BLOCK_LEN].output            # indexing included input block (1)
 
       if current_progress == 1:
-        x = g_block(x, latent, 256, 3)
-        # Size: 15x15x256
-        x = g_block(x, latent, 128, 1)
-        # Size: 15x15x128
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 256, 3)           # Size: 15x15x256
+        x = g_block(x, latent, 128, 1)                    # Size: 15x15x128
+        ## upsampling only path
+        y = layers.UpSampling2D(3)(old_output)            # Size: 15x15x256
         self.image_shape = (15, 15, 4)
 
       elif current_progress == 2:
-        x = g_block(x, latent, 64, 3)
-        # Size: 45x45x64
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 64, 3)            # Size: 45x45x64
+        ## upsampling only path
+        y = layers.UpSampling2D(3)(old_output)            # Size: 45x45x128
         self.image_shape = (45, 45, 4)
 
       elif current_progress == 3:
-        x = g_block(x, latent, 32)
-        # Size: 90x90x32
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 32)               # Size: 90x90x32
+        ## upsampling only path
+        y = layers.UpSampling2D(2)(old_output)            # Size: 90x90x64
         self.image_shape = (90, 90, 4)
 
       elif current_progress == 4:
-        x = g_block(x, latent, 16)
-        # Size: 180x180x16
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 16)               # Size: 180x180x16
+        ## upsampling only path
+        y = layers.UpSampling2D(2)(old_output)            # Size: 180x180x32
         self.image_shape = (180, 180, 4)
 
       elif current_progress == 5:
-        x = g_block(x, latent, 8)
-        # Size: 360x360x8
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 8)                # Size: 360x360x8
+        ## upsampling only path
+        y = layers.UpSampling2D(2)(old_output)            # Size: 360x360x16
         self.image_shape = (360, 360, 4)
       
       # output RGBA image
-      image_output = output_block(x)
+      full_output = output_block(x)                       # Size: ???x???x4
+
+      # use old (to be trashsed) output block for fading model
+      samp_output = y
+      for i in range(len(model.layers)-self.OUTPUT_BLOCK_LEN, len(model.layers)):
+        samp_output = model.layers[i](samp_output)        # Size: ???x???x4
+      fade_output = WeightedSum()([samp_output, full_output])    # transition from upsampling only to full
 
       # Make new model on top of the old model
-      model = Model(inputs = model.input, outputs = image_output)
+      model_full = Model(inputs = model.input, outputs = full_output)
+      model_fade = Model(inputs = model.input, outputs = fade_output)
 
-      model.summary()
+      model_full.summary()
     
     # return progressed model
     print("The model progressed to level " + str(current_progress))
-    return model
-  
+    return model_full, model_fade
+

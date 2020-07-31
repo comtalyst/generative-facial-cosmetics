@@ -7,10 +7,11 @@ import tensorflow as tf
 from tensorflow import keras
 import os
 import h5py
+from models.custom_layers.WeightedSum import WeightedSum
 if isWindows():
-  from tensorflow_core.python.keras.api._v2.keras import layers, Model, models
+  from tensorflow_core.python.keras.api._v2.keras import layers, Model, models, backend
 else:
-  from tensorflow.keras import layers, Model, models
+  from tensorflow.keras import layers, Model, models, backend
 
 ###### Class Content ######
 class Discriminator:
@@ -21,6 +22,7 @@ class Discriminator:
   FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
   model = None
+  model_fade = None         # fading-to-grown model
   image_shapes = {
     0: (5, 5, 4),
     1: (15, 15, 4),
@@ -36,14 +38,15 @@ class Discriminator:
 
   def __init__(self, strategy):
     self.model = self.build_model(strategy)
+    self.model_fade = self.model    # placeholder for checkpointing
 
   ###### Public Methods ######
 
   def progress(self, strategy):   
-    self.model = self.progress_model(self.model, strategy)
+    self.model, self.model_fade = self.progress_model(self.model, strategy)
     self.current_progress += 1
   
-  # save to SavedModel
+  # save to SavedModel (does not include fade)
   def save(self, epoch, strategy, dir = None):
     model = self.model
 
@@ -67,6 +70,16 @@ class Discriminator:
       self.model.summary()
     self.image_shape = self.image_shapes[self.current_progress]
 
+  # set alpha value for fading-in model
+  def setAlpha(self, new_alpha):
+    found = False
+    for layer in self.model_fade.layers:
+      if isinstance(layer, WeightedSum):
+        backend.set_value(layer.alpha, new_alpha)
+        found = True
+    if not found:
+      raise RuntimeError("Cannot set alpha on undefined model_fade; make sure this is not a first-gen model")
+  
   ###### Functions ######
 
   def d_block(self, input_tensor, filters, reduce_times = 2):
@@ -92,8 +105,7 @@ class Discriminator:
     with strategy.scope():
       # Image input
       self.image_shape = (5, 5, 4)
-      x, image_input = input_block((5, 5, 4), 256)
-      # Size: 5x5x256
+      x, image_input = input_block((5, 5, 4), 256)        # Size: 5x5x256
 
       # convert to prob for decision using 1-dimensional Neural Network
       x = d_block(x, 512, reduce_times = 1)
@@ -108,6 +120,11 @@ class Discriminator:
     return model
   
   ## GAN progressive training: add layers
+  '''
+  Fading Discriminator: 
+	  Full: New Input --> New Input Block --> Conv --> Downsampling --> COMBINE --> Old Layers
+	  Samp: New Input --> Downsampling --> Old Input Block ----------->
+  '''
   def progress_model(self, model, strategy):
     d_block = self.d_block
     input_block = self.input_block
@@ -119,59 +136,79 @@ class Discriminator:
     current_progress += 1
 
     with strategy.scope():
-      # cut the input block from the previous generation
-      # the preferred input shape for this should be the last "after-input" shape
-      y = model.layers[self.INPUT_BLOCK_LEN].output
-
       if current_progress == 1:
         self.image_shape = (15, 15, 4)
-        x, image_input = input_block((15, 15, 4), 64)
-        # Size: 15x15x64
-        x = d_block(x, 128, 1)
-        # Size: 15x15x128
-        x = d_block(x, 256, 3)
-        # Size: 5x5x256
+        x, image_input = input_block((15, 15, 4), 64)     # Size: 15x15x64
+        ## main (Conv + downsampling) path
+        x = d_block(x, 128, 1)                            # Size: 15x15x128
+        x = d_block(x, 256, 3)                            # Size: 5x5x256
         # should now be match with y's preferred input shape
+        ## downsampling only path
+        y = layers.AveragePooling2D(3)(image_input)       # Size: 5x5x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 5x5x256
 
       elif current_progress == 2:
         self.image_shape = (45, 45, 4)
-        x, image_input = input_block((45, 45, 4), 32)
-        # Size: 45x45x32
-        x = d_block(x, 64, 3)
-        # Size: 15x15x64
+        x, image_input = input_block((45, 45, 4), 32)     # Size: 45x45x32
+        ## main (Conv + downsampling) path
+        x = d_block(x, 64, 3)                             # Size: 15x15x64
+        ## downsampling only path
+        y = layers.AveragePooling2D(3)(image_input)       # Size: 15x15x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 15x15x64
 
       elif current_progress == 3:
         self.image_shape = (90, 90, 4)
-        x, image_input = input_block((90, 90, 4), 16)
-        # Size: 90x90x16
-        x = d_block(x, 32, 2)
-        # Size: 45x45x32
+        x, image_input = input_block((90, 90, 4), 16)     # Size: 90x90x16
+        ## main (Conv + downsampling) path
+        x = d_block(x, 32, 2)                             # Size: 45x45x32
+        ## downsampling only path
+        y = layers.AveragePooling2D(2)(image_input)       # Size: 45x45x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 45x45x32
 
       elif current_progress == 4:
         self.image_shape = (180, 180, 4)
-        x, image_input = input_block((180, 180, 4), 8)
-        # Size: 180x180x8
-        x = d_block(x, 16, 2)
-        # Size: 90x90x16
+        x, image_input = input_block((180, 180, 4), 8)    # Size: 180x180x8
+        ## main (Conv + downsampling) path
+        x = d_block(x, 16, 2)                             # Size: 90x90x16
+        ## downsampling only path
+        y = layers.AveragePooling2D(2)(image_input)       # Size: 90x90x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 90x90x16
 
       elif current_progress == 5:
         self.image_shape = (360, 360, 4)
-        x, image_input = input_block((360, 360, 4), 4)
-        # Size: 360x360x4
-        x = d_block(image_input, 8)
-        # Size: 180x180x8
+        x, image_input = input_block((360, 360, 4), 4)    # Size: 360x360x4
+        ## main (Conv + downsampling) path
+        x = d_block(image_input, 8)                       # Size: 180x180x8
+        ## downsampling only path
+        y = layers.AveragePooling2D(2)(image_input)       # Size: 180x180x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 180x180x8
       
+      # merge for fading model
+      merged = WeightedSum()([y, x])
+
       # continue on with the model
       for i in range(self.INPUT_BLOCK_LEN, len(model.layers)):
         x = model.layers[i](x)
+        merged = model.layers[i](merged)
 
       # Make new model on top of the old model
-      model = Model(inputs = image_input, outputs = x)
+      model_full = Model(inputs = image_input, outputs = x)
+      model_fade = Model(inputs = image_input, outputs = merged)
 
-      model.summary()
+      model_full.summary()
     
     # return progressed model
     print("The model progressed to level " + str(current_progress))
-    return model
+    return model_full, model_fade
 
 

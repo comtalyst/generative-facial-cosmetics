@@ -42,15 +42,21 @@ def generator_loss(fake_output):
   return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
 
 @tf.function
-def train_step(generator, discriminator, images, batch_size, strategy):
+def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size, strategy):
   latent_size = generator.LATENT_SIZE
   def true_step(images):
     noise = tf.random.normal([batch_size, latent_size])
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
-      generated_images = generator.model(noise, training=True)
-
-      real_output = discriminator.model(images, training=True)
-      fake_output = discriminator.model(generated_images, training=True)
+      if epoch >= fade_epochs or generator.model_fade == None:
+        generated_images = generator.model(noise, training=True)
+        real_output = discriminator.model(images, training=True)
+        fake_output = discriminator.model(generated_images, training=True)
+      else:
+        generator.setAlpha(epoch/fade_epochs)
+        discriminator.setAlpha(epoch/fade_epochs)
+        generated_images = generator.model_fade(noise, training=True)
+        real_output = discriminator.model_fade(images, training=True)
+        fake_output = discriminator.model_fade(generated_images, training=True)
 
       gen_loss = generator_loss(fake_output)
       disc_loss = discriminator_loss(real_output, fake_output)
@@ -66,12 +72,20 @@ def train_step(generator, discriminator, images, batch_size, strategy):
     true_step(images)
 
 # load checkpoint without training, intended to have similar function as loading models
-def load_checkpoint(generator, discriminator, strategy):
+def load_checkpoint(generator, discriminator, strategy, load_fade=True):
   with strategy.scope():
-    ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
-                              discriminator_optimizer=discriminator_optimizer,
-                              generator=generator.model,
-                              discriminator=discriminator.model)
+    if load_fade:
+      ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
+                                discriminator_optimizer=discriminator_optimizer,
+                                generator=generator.model,
+                                discriminator=discriminator.model,
+                                generator_fade=generator.model_fade,
+                                discriminator_fade=discriminator.model_fade)
+    else:
+      ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
+                                discriminator_optimizer=discriminator_optimizer,
+                                generator=generator.model,
+                                discriminator=discriminator.model)
     checkpoint_dir_progress = os.path.join(checkpoint_dir, str(generator.current_progress))
     ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir_progress, max_to_keep=MAX_TO_KEEP)
 
@@ -83,7 +97,7 @@ def load_checkpoint(generator, discriminator, strategy):
     else :
       print("No checkpoints to be restored")
 
-def train(generator, discriminator, dataset, epochs, batch_size, strategy, restore_checkpoint=True):
+def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, strategy, restore_checkpoint=True):
   if generator.current_progress != discriminator.current_progress:
     raise ValueError("The progresses of generator " + str(generator.current_progress) + 
                     " and discriminator " + str(discriminator.current_progress) + " are not equal")
@@ -93,7 +107,9 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy, resto
     ckpt = tf.train.Checkpoint(generator_optimizer=generator_optimizer,
                               discriminator_optimizer=discriminator_optimizer,
                               generator=generator.model,
-                              discriminator=discriminator.model)
+                              discriminator=discriminator.model,
+                              generator_fade=generator.model_fade,
+                              discriminator_fade=discriminator.model_fade)
     checkpoint_dir_progress = os.path.join(checkpoint_dir, str(generator.current_progress))
     ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir_progress, max_to_keep=MAX_TO_KEEP)
 
@@ -114,7 +130,7 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy, resto
     start = time.time()
 
     for image_batch in dataset:
-      train_step(generator, discriminator, image_batch, batch_size, strategy)
+      train_step(generator, discriminator, epoch, fade_epochs, image_batch, batch_size, strategy)
       if FIRSTSTEP:
         print("First batch done!")
         FIRSTSTEP = False
@@ -124,7 +140,7 @@ def train(generator, discriminator, dataset, epochs, batch_size, strategy, resto
       display.clear_output(wait=True)
     except:
       pass
-    generate_and_save_images(generator, epoch + 1)
+    generate_and_save_images(generator, epoch + 1, bool(epoch < fade_epochs))
 
     print ('Time for epoch {} is {} sec, total {} sec'.format(epoch + 1, time.time()-start, time.time()-allstart))
     # Save the model every EPOCHS_TO_SAVE epochs (not include in time)
