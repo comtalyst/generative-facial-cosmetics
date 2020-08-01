@@ -30,7 +30,7 @@ discriminator_optimizer = tf.keras.optimizers.Adam(DEFAULT_LR)
 ## checkpoints manager
 checkpoint_dir = os.path.join(DIR_OUTPUT, os.path.join('training_checkpoints', 'current'))
 EPOCHS_TO_SAVE = 1
-MAX_TO_KEEP = 2
+MAX_TO_KEEP = 100
 
 ###### Functions ######
 
