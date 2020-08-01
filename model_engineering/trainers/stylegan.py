@@ -72,6 +72,8 @@ def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size,
     true_step(images)
 
 # load checkpoint without training, intended to have similar function as loading models
+# do not load fade if you are loading from models that do not have fade
+# also, loading fade is not neccesary if you are going to progress it
 def load_checkpoint(generator, discriminator, strategy, load_fade=True):
   with strategy.scope():
     if load_fade:
@@ -108,8 +110,8 @@ def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, st
                               discriminator_optimizer=discriminator_optimizer,
                               generator=generator.model,
                               discriminator=discriminator.model,
-                              generator_fade=generator.model_fade,
-                              discriminator_fade=discriminator.model_fade)
+                              generator_fade=generator.model_fade,          # fade model must exist in order to load
+                              discriminator_fade=discriminator.model_fade)  # should not worry since we usually dont save first gen model, but you cannot continue training from old ver.
     checkpoint_dir_progress = os.path.join(checkpoint_dir, str(generator.current_progress))
     ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_dir_progress, max_to_keep=MAX_TO_KEEP)
 
