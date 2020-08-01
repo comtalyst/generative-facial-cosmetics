@@ -140,11 +140,11 @@ def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, st
       last_epoch = 0
 
   allstart = time.time()
-  for epoch in range(last_epoch, epochs):
+  for epoch in range(last_epoch+1, epochs+1):
     start = time.time()
 
     for image_batch in dataset:
-      train_step(generator, discriminator, epoch + 1, fade_epochs, image_batch, batch_size, strategy)
+      train_step(generator, discriminator, epoch, fade_epochs, image_batch, batch_size, strategy)
       if FIRSTSTEP:
         print("First batch done!")
         FIRSTSTEP = False
@@ -154,11 +154,11 @@ def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, st
       display.clear_output(wait=True)
     except:
       pass
-    generate_and_save_images(generator, epoch + 1, bool(epoch < fade_epochs))
+    generate_and_save_images(generator, epoch, bool(epoch < fade_epochs))
 
-    print ('Time for epoch {} is {} sec, total {} sec'.format(epoch + 1, time.time()-start, time.time()-allstart))
+    print ('Time for epoch {} is {} sec, total {} sec'.format(epoch, time.time()-start, time.time()-allstart))
     # Save the model every EPOCHS_TO_SAVE epochs (not include in time)
-    if (epoch + 1) % EPOCHS_TO_SAVE == 0:
+    if (epoch) % EPOCHS_TO_SAVE == 0:
       ckpt_save_path = ckpt_manager.save()
       print ('Saving checkpoint for epoch {} at {}'.format(epoch+1, ckpt_save_path))
     
