@@ -44,7 +44,7 @@ def discriminator_loss(real_output, fake_output):
 def generator_loss(fake_output):
   return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
 
-#@tf.function
+@tf.function
 def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size, strategy):
   latent_size = generator.LATENT_SIZE
   gen_loss_dict[epoch] = list()
