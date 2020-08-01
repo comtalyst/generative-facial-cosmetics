@@ -29,6 +29,7 @@ def generate_and_save_images(generator, epoch, fade=False):
     for i in range(predictions.shape[0]):
         plt.subplot(4, 4, i+1)
         plt.imshow(predictions[i, :, :, :])
+        plt.title(label=epoch)
         plt.axis('off')
 
     plt.savefig(os.path.join(os.path.join(DIR_OUTPUT, 'training_generateds'), 'image-progress_{:02d}-epoch_{:04d}.png'.format(generator.current_progress, epoch)))
