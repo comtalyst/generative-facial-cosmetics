@@ -19,10 +19,13 @@ from IPython import display
 ###### Constants ######
 
 FIRSTSTEP = True
+DEFAULT_LR = 1e-4
+gen_loss_dict = dict()
+disc_loss_dict = dict()
 
 ## optimizers
-generator_optimizer = tf.keras.optimizers.Adam(1e-4)
-discriminator_optimizer = tf.keras.optimizers.Adam(1e-4)
+generator_optimizer = tf.keras.optimizers.Adam(DEFAULT_LR)
+discriminator_optimizer = tf.keras.optimizers.Adam(DEFAULT_LR)
 
 ## checkpoints manager
 checkpoint_dir = os.path.join(DIR_OUTPUT, os.path.join('training_checkpoints', 'current'))
@@ -41,9 +44,11 @@ def discriminator_loss(real_output, fake_output):
 def generator_loss(fake_output):
   return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
 
-@tf.function
+#@tf.function
 def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size, strategy):
   latent_size = generator.LATENT_SIZE
+  gen_loss_dict[epoch] = list()
+  disc_loss_dict[epoch] = list()
   def true_step(images):
     noise = tf.random.normal([batch_size, latent_size])
     with tf.GradientTape() as gen_tape, tf.GradientTape() as disc_tape:
@@ -60,6 +65,8 @@ def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size,
 
       gen_loss = generator_loss(fake_output)
       disc_loss = discriminator_loss(real_output, fake_output)
+      gen_loss_dict[epoch].append(gen_loss)
+      disc_loss_dict[epoch].append(disc_loss)
 
     gradients_of_generator = gen_tape.gradient(gen_loss, generator.model.trainable_variables)
     gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.model.trainable_variables)
@@ -99,7 +106,12 @@ def load_checkpoint(generator, discriminator, strategy, load_fade=True):
     else :
       print("No checkpoints to be restored")
 
-def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, strategy, restore_checkpoint=True):
+def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, strategy, lr=[DEFAULT_LR, DEFAULT_LR], restore_checkpoint=True):
+  global generator_optimizer
+  global discriminator_optimizer
+  generator_optimizer = tf.keras.optimizers.Adam(lr[0])
+  discriminator_optimizer = tf.keras.optimizers.Adam(lr[1])
+  
   if generator.current_progress != discriminator.current_progress:
     raise ValueError("The progresses of generator " + str(generator.current_progress) + 
                     " and discriminator " + str(discriminator.current_progress) + " are not equal")
@@ -132,7 +144,7 @@ def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, st
     start = time.time()
 
     for image_batch in dataset:
-      train_step(generator, discriminator, epoch, fade_epochs, image_batch, batch_size, strategy)
+      train_step(generator, discriminator, epoch + 1, fade_epochs, image_batch, batch_size, strategy)
       if FIRSTSTEP:
         print("First batch done!")
         FIRSTSTEP = False
