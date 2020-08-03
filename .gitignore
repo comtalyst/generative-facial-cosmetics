@@ -8,3 +8,4 @@ dataset_engineering/outputs/anomalies
 *.cpython-37.pyc
 *.pyc
 model_engineering/outputs
+generative-facial-cosmetics.code-workspace
