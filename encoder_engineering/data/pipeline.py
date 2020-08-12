@@ -35,8 +35,10 @@ def preprocess(image, noise):
       if image[i, j, 3] < 128:
         image[i, j] = (0, 0, 0, 0)
   '''
+  # blackout the transparents and reduce channels from 4 to 3
+  mask = tf.dtypes.cast((image[:, :, 3] >= 128), tf.float32)
+  image = tf.math.multiply(image, tf.expand_dims(mask, 2))
   image = image[:, :, :3]
-  #image = tf.slice(image, [0, 0, 0], [IMAGE_SIZE[0], IMAGE_SIZE[1], 3])
   return (tf.keras.applications.vgg16.preprocess_input(image), noise)
 
 ### return "list" of (latent, generator output)
