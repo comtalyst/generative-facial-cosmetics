@@ -58,8 +58,8 @@ class Encoder:
       input_layer = layers.Input(self.IMAGE_SHAPE)
       output = keras.applications.VGG16(include_top=False, weights='imagenet', input_tensor=input_layer).output
       output = layers.Flatten()(output)
-      output = layers.Dense(512)(output)
-      output = layers.Dense(512)(output)
+      output = layers.Dense(1024)(output)
+      output = layers.Dense(1024)(output)
       output = layers.Dense(self.LATENT_SIZE)(output)
       model = Model(inputs=input_layer, outputs=output)
       
