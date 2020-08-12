@@ -5,6 +5,8 @@ import os
 
 #### constants
 
+workspace = "/dataset_engineering"
+
 #### functions
 def init():
   ## install gcs fuse
@@ -29,7 +31,7 @@ def mount_bucket(bucketname):
   os.system("mkdir -p gcs_mounts")
   os.system("mkdir -p " + storepath + "")
   os.system("gcsfuse --implicit-dirs --limit-bytes-per-sec -1 --limit-ops-per-sec -1 " + bucketname + " " + storepath)
-  return storepath
+  return storepath + workspace
 
 ## unmount gcs bucket
 def unmount_bucket(bucketname):

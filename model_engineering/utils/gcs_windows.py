@@ -4,6 +4,8 @@
 
 #### constants
 
+workspace = "\\model_engineering"
+
 #### functions
 def init():
   return
@@ -19,7 +21,7 @@ def mount_bucket(bucketname, selectedVol=None):
   print('Enter this command to your terminal and type in the volume of the mount:')
   print('rclone mount remote:' + bucketname + ' <VOL>: --vfs-cache-mode writes')
   vol = input('Mounted volume >> ')
-  return vol + ':\\', vol + ':\\'             # special route placeholder, normal route
+  return vol + ':\\' + workspace, vol + ':\\' + workspace             # special route placeholder, normal route
 
 ## unmount gcs bucket
 def unmount_bucket(bucketname):

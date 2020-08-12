@@ -4,6 +4,7 @@
 
 ###### Constants ###### 
 CURRENT_OS = 'Windows'                # manually change this field every time before deploying (maybe at gdrive)
+workspace = "/model_engineering"
 
 if CURRENT_OS.lower()[0] == 'w':
   DIR = '.'
@@ -11,7 +12,7 @@ if CURRENT_OS.lower()[0] == 'w':
 elif CURRENT_OS.lower()[0] == 'c':
   DIR = 'drive/My Drive/Live Workspace/generative-facial-cosmetics/model_engineering/'
   print("Output directories will be moved to GCS instead; make sure to authenticate GCS")
-  DIR_OUTPUT = "gs://" + "generative-facial-cosmetics" + "/"
+  DIR_OUTPUT = "gs://" + "generative-facial-cosmetics" + workspace + "/"
 else:
   raise NotImplementedError('OS is not supported yet')
 

@@ -4,6 +4,8 @@
 
 #### constants
 
+workspace = "\\dataset_engineering"
+
 #### functions
 def init():
   return
@@ -19,7 +21,7 @@ def mount_bucket(bucketname, selectedVol=None):
   print('Enter this command to your terminal and type in the volume of the mount:')
   print('rclone mount remote:' + bucketname + ' <VOL>: --vfs-cache-mode writes')
   vol = input('Mounted volume >> ')
-  return vol + ':\\'
+  return vol + ':\\' + workspace
 
 ## unmount gcs bucket
 def unmount_bucket(bucketname):
