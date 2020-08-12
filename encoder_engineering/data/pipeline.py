@@ -57,7 +57,7 @@ def load_dataset(n, batch=False):
   return dataset
 
 ### just call this ez func
-def get_dataset(generator, strategy, n_train=BATCH_SIZE*64, n_valid=BATCH_SIZE*64, batch=False, image_size=DEFAULT_IMAGE_SIZE):
+def get_dataset(generator, strategy, n_train=BATCH_SIZE*8, n_valid=BATCH_SIZE*8, batch=False, image_size=DEFAULT_IMAGE_SIZE):
   global IMAGE_SIZE
   IMAGE_SIZE = image_size
 
