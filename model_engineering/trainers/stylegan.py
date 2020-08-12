@@ -160,7 +160,7 @@ def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, st
     # Save the model every EPOCHS_TO_SAVE epochs (not include in time)
     if (epoch) % EPOCHS_TO_SAVE == 0:
       ckpt_save_path = ckpt_manager.save()
-      print ('Saving checkpoint for epoch {} at {}'.format(epoch+1, ckpt_save_path))
+      print ('Saving checkpoint for epoch {} at {}'.format(epoch, ckpt_save_path))
     
 
   # saving last epoch, unless it has been saved
