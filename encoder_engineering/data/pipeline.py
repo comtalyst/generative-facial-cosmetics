@@ -39,6 +39,7 @@ def preprocess(image, noise):
   mask = tf.dtypes.cast((image[:, :, 3] >= 0.5), tf.float32)
   image = tf.math.multiply(image, tf.expand_dims(mask, 2))
   image = image[:, :, :3]
+  image = tf.math.multiply(image, 255)        # from [0, 1] to [0, 255] for vgg16 preprocessing
   return (tf.keras.applications.vgg16.preprocess_input(image), noise)
 
 ### return "list" of (latent, generator output)
