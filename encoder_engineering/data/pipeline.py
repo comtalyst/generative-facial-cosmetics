@@ -32,11 +32,11 @@ def preprocess(image, noise):
   '''
   for i in range(image.shape[0]):
     for j in range(image.shape[1]):
-      if image[i, j, 3] < 128:
+      if image[i, j, 3] < 0.5:
         image[i, j] = (0, 0, 0, 0)
   '''
   # blackout the transparents and reduce channels from 4 to 3
-  mask = tf.dtypes.cast((image[:, :, 3] >= 128), tf.float32)
+  mask = tf.dtypes.cast((image[:, :, 3] >= 0.5), tf.float32)
   image = tf.math.multiply(image, tf.expand_dims(mask, 2))
   image = image[:, :, :3]
   return (tf.keras.applications.vgg16.preprocess_input(image), noise)
