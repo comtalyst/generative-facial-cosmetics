@@ -44,14 +44,14 @@ def test_step(model, data_batch, strategy):
   latents = data_batch[1]
   def true_step(images, latents):
     logits = model(images)
-    loss = losses.MSE(latents, logits)
-    return loss
+    batch_loss = losses.MSE(latents, logits)
+    return batch_loss
 
   if isColab():
-    loss = strategy.run(true_step, args=(images, latents,))       # make sure this is a tuple using ','
+    batch_loss = strategy.run(true_step, args=(images, latents,))       # make sure this is a tuple using ','
   else:
-    loss = true_step(images, latents)
-    return loss
+    batch_loss = true_step(images, latents)
+  return strategy.reduce(tf.distribute.ReduceOp.SUM, batch_loss, axis=None)
 
 @tf.function
 def train_step(model, data_batch, optimizer, strategy):
@@ -60,16 +60,16 @@ def train_step(model, data_batch, optimizer, strategy):
   def true_step(images, latents):
     with tf.GradientTape() as tape:
       logits = model(images)
-      loss = losses.MSE(latents, logits)
-    grads = tape.gradient(loss, model.trainable_variables)
+      batch_loss = losses.MSE(latents, logits)
+    grads = tape.gradient(batch_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
-    return loss
+    return batch_loss
 
   if isColab():
-    loss = strategy.run(true_step, args=(images, latents,))       # make sure this is a tuple using ','
+    batch_loss = strategy.run(true_step, args=(images, latents,))       # make sure this is a tuple using ','
   else:
-    loss = true_step(images, latents)
-    return loss
+    batch_loss = true_step(images, latents)
+  return strategy.reduce(tf.distribute.ReduceOp.SUM, batch_loss, axis=None)
 
 
 def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strategy, model_type=None, lr=DEFAULT_LR, restore_checkpoint=True):
@@ -86,16 +86,18 @@ def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strate
   for epoch in range(1, epochs+1):
     start = time.time()
     training_dataset, validation_dataset = dataset_gen_func(generator, strategy, batch=True, n_train=n_train, n_valid=n_valid, model_type=model_type)
-    training_losses = list()
-    validation_losses = list()
+    training_losses = 0
+    validation_losses = 0
     for data_batch in training_dataset:
-      training_losses.append(train_step(model, data_batch, optimizer, strategy))
+      training_losses += train_step(model, data_batch, optimizer, strategy)
       if FIRSTSTEP:
         print("First batch done!")
         FIRSTSTEP = False
     for data_batch in validation_dataset:
-      validation_losses.append(test_step(model, data_batch, strategy))
-    print('Epoch {}: Average training loss = {}, Validation loss = {}'.format(epoch, tf.math.reduce_mean(training_losses), tf.math.reduce_mean(validation_losses)))
+      validation_losses += test_step(model, data_batch, strategy)
+    training_loss = tf.math.reduce_sum(training_losses)/n_train
+    validation_loss = tf.math.reduce_sum(validation_losses)/n_valid
+    print('Epoch {}: Average training loss = {}, Validation loss = {}'.format(epoch, training_loss, validation_loss))
     ckpt.save(checkpoint_path)
     print('Time for epoch {} is {} sec, total {} sec, saved.'.format(epoch, time.time()-start, time.time()-allstart))
 
