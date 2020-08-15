@@ -95,7 +95,7 @@ def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strate
         FIRSTSTEP = False
     for data_batch in validation_dataset:
       validation_losses.append(test_step(model, data_batch, strategy))
-    print('Epoch {}: Average training loss = {}, Validation loss = {}'.format(epoch, np.mean(training_losses), np.mean(validation_losses)))
+    print('Epoch {}: Average training loss = {}, Validation loss = {}'.format(epoch, tf.math.reduce_mean(training_losses), tf.math.reduce_mean(validation_losses)))
     ckpt.save(checkpoint_path)
     print('Time for epoch {} is {} sec, total {} sec, saved.'.format(epoch, time.time()-start, time.time()-allstart))
 
