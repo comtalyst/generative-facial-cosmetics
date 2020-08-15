@@ -57,6 +57,9 @@ def load_dataset(model_type, n, batch=False):
     dataset = dataset.map(preprocess_vgg16, num_parallel_calls=AUTO) 
   else:
     dataset = dataset.map(preprocess, num_parallel_calls=AUTO) 
+  
+  ## reshuffling after each iteration
+  dataset.shuffle(n, reshuffle_each_iteration=True)
 
   ## batching
   if batch:
