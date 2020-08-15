@@ -38,6 +38,7 @@ def load_checkpoint(model, strategy):
   with strategy.scope():
     model.load_weights(checkpoint_path)
 
+@tf.function
 def test_step(model, data_batch, strategy):
   images = data_batch[0]
   latents = data_batch[1]
@@ -52,6 +53,7 @@ def test_step(model, data_batch, strategy):
     loss = true_step(images, latents)
     return loss
 
+@tf.function
 def train_step(model, data_batch, optimizer, strategy):
   images = data_batch[0]
   latents = data_batch[1]
