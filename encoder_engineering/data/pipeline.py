@@ -41,14 +41,15 @@ def preprocess(image, noise):
   return (image, noise)
 
 ### return "list" of (latent, generator output)
-def load_dataset(model_type, n, batch=False):
+def load_dataset(model_type, n, strategy, batch=False):
   option_no_order = tf.data.Options()
   option_no_order.experimental_deterministic = False
   
   rand_latents = tf.random.normal([n, LATENT_SIZE])
   dataset = tf.data.Dataset.from_tensor_slices(rand_latents)
   dataset = dataset.with_options(option_no_order)
-  dataset = dataset.map(gen_img, num_parallel_calls=AUTO) 
+  with strategy.scope():
+    dataset = dataset.map(gen_img, num_parallel_calls=AUTO) 
 
   ## preprocess by specified model type
   if model_type == None or type(model_type) != str:
@@ -75,7 +76,7 @@ def get_dataset(generator, strategy, model_type=None, n_train=BATCH_SIZE*8, n_va
   global GENERATOR 
   GENERATOR = generator
 
-  return load_dataset(model_type, n_train, batch), load_dataset(model_type, n_valid, batch)
+  return load_dataset(model_type, n_train, strategy, batch), load_dataset(model_type, n_valid, strategy, batch)
 
 ###### Execution ######
 
