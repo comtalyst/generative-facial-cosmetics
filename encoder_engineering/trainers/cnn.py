@@ -43,7 +43,7 @@ def test_step(model, data_batch, strategy):
   images = data_batch[0]
   latents = data_batch[1]
   def true_step(images, latents):
-    logits = model(images)
+    logits = model(images, training=False)
     batch_loss = losses.MSE(latents, logits)
     return batch_loss
 
@@ -59,7 +59,7 @@ def train_step(model, data_batch, optimizer, strategy):
   latents = data_batch[1]
   def true_step(images, latents):
     with tf.GradientTape() as tape:
-      logits = model(images)
+      logits = model(images, training=True)
       batch_loss = losses.MSE(latents, logits)
     grads = tape.gradient(batch_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -86,17 +86,17 @@ def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strate
   for epoch in range(1, epochs+1):
     start = time.time()
     training_dataset, validation_dataset = dataset_gen_func(generator, strategy, batch=True, n_train=n_train, n_valid=n_valid, model_type=model_type)
-    training_losses = 0
-    validation_losses = 0
+    training_losses = 0.0
+    validation_losses = 0.0
     for data_batch in training_dataset:
-      training_losses += train_step(model, data_batch, optimizer, strategy)
+      training_losses = tf.math.add(training_losses, train_step(model, data_batch, optimizer, strategy))
       if FIRSTSTEP:
         print("First batch done!")
         FIRSTSTEP = False
     for data_batch in validation_dataset:
       validation_losses += test_step(model, data_batch, strategy)
-    training_loss = tf.math.reduce_sum(training_losses)/n_train
-    validation_loss = tf.math.reduce_sum(validation_losses)/n_valid
+    training_loss = tf.math.divide(tf.math.reduce_sum(training_losses), n_train)
+    validation_loss = tf.math.divide(tf.math.reduce_sum(validation_losses), n_valid)
     print('Epoch {}: Average training loss = {}, Validation loss = {}'.format(epoch, training_loss, validation_loss))
     ckpt.save(checkpoint_path)
     print('Time for epoch {} is {} sec, total {} sec, saved.'.format(epoch, time.time()-start, time.time()-allstart))
