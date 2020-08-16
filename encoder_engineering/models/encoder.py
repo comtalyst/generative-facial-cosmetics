@@ -33,6 +33,10 @@ class Encoder:
       self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 3)
       self.model_type = 'vgg16'
       self.model = self.build_model_vgg16(strategy)
+    elif model_type.lower() in ['mirror', 'mir', 'discriminator', 'disc']:
+      self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 3)
+      self.model_type = 'mirror'
+      self.model = self.build_model_mirror(strategy)
     else:
       self.model = self.build_model(strategy)
   
@@ -76,7 +80,30 @@ class Encoder:
     with strategy.scope():
       input_layer = layers.Input(self.IMAGE_SHAPE)
       x = input_layer
+      
+      x = d_block(x, 64, 2)                       # 360x360x64, 180x180x64
+      x = d_block(x, 128, 2)                      # 180x180x128, 90x90x128
+      x = d_block(x, 256, 2)                      # 90x90x256, 45x45x256
+      x = d_block(x, 512, 3)                      # 45x45x512, 15x15x512
+      x = d_block(x, 512, 3)                      # 15x15x512, 5x5x512
 
+      x = layers.Flatten()(x)                     # 5*5*512 = 12800
+      x = layers.Dense(4096)(x)
+      x = layers.Dense(4096)(x)
+      x = layers.Dense(self.LATENT_SIZE)(x)
+
+      model = Model(inputs=input_layer, outputs=x, name="custom-encoder")
+      model.summary()
+
+    return model
+  
+  # unused old version
+  def build_model_mirror(self, strategy):
+    d_block = self.d_block
+    with strategy.scope():
+      input_layer = layers.Input(self.IMAGE_SHAPE)
+      x = input_layer
+      
       x = d_block(x, 8)                       # 180x180x8
       x = d_block(x, 16)                      # 90x90x16
       x = d_block(x, 32)                      # 45x45x32
