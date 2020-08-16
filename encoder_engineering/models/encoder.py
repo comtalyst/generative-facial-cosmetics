@@ -18,26 +18,30 @@ class Encoder:
   ###### Constants ######
 
   LATENT_SIZE = 256
-  IMAGE_SHAPE = (360, 360, 0)
+  IMAGE_SHAPE = (360, 360, None)
+  ## to-be-defined
   model = None
   model_type = None
 
   ###### Constructor ######
 
   def __init__(self, strategy, model_type=None):
-    self.model_type = 'custom'
-    self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 4)
-    if model_type == None or type(model_type) != str:
+    # blank, modified vgg16
+    if model_type == None or model_type == 'new_vgg':
+      self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 4)
       self.model = self.build_model(strategy)
-    elif model_type.lower() in ['vgg', 'vgg16', 'vgg-16', 'vgg_16']:
+    # pre-trained vgg16
+    elif model_type == 'vgg16':
       self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 3)
-      self.model_type = 'vgg16'
       self.model = self.build_model_vgg16(strategy)
-    elif model_type.lower() in ['mirror', 'mir', 'discriminator', 'disc']:
-      self.model_type = 'mirror'
+    # discriminator mirrored
+    elif model_type == 'mirror':
+      self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 4)
       self.model = self.build_model_mirror(strategy)
     else:
-      self.model = self.build_model(strategy)
+      raise ValueError('Unknown model_type: ' + str(model_type))
+    
+    self.model_type = model_type
   
   ###### Public Methods ######
   
@@ -91,7 +95,7 @@ class Encoder:
       x = layers.Dense(4096)(x)
       x = layers.Dense(self.LATENT_SIZE)(x)
 
-      model = Model(inputs=input_layer, outputs=x, name="custom-encoder")
+      model = Model(inputs=input_layer, outputs=x, name="modified-vgg16-encoder")
       model.summary()
 
     return model

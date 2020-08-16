@@ -17,7 +17,9 @@ AUTO = tf.data.experimental.AUTOTUNE
 DEFAULT_IMAGE_SIZE = [360, 360]
 LATENT_SIZE = 256
 BATCH_SIZE = bs
+## to be defined
 GENERATOR = None
+IMAGE_SIZE = None
 
 ###### Functions ######
 
@@ -74,7 +76,7 @@ def get_dataset(generator, strategy, model_type=None, n_train=BATCH_SIZE*8, n_va
   IMAGE_SIZE = image_size
 
   global GENERATOR 
-  GENERATOR = generator
+  GENERATOR = generator     # use global since we are going to use dataset.map()
 
   return load_dataset(model_type, n_train, strategy, batch), load_dataset(model_type, n_valid, strategy, batch)
 
