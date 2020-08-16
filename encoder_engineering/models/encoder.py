@@ -34,7 +34,6 @@ class Encoder:
       self.model_type = 'vgg16'
       self.model = self.build_model_vgg16(strategy)
     elif model_type.lower() in ['mirror', 'mir', 'discriminator', 'disc']:
-      self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 3)
       self.model_type = 'mirror'
       self.model = self.build_model_mirror(strategy)
     else:
@@ -116,7 +115,7 @@ class Encoder:
       x = layers.Dense(1024)(x)
       x = layers.Dense(self.LATENT_SIZE)(x)
 
-      model = Model(inputs=input_layer, outputs=x, name="custom-encoder")
+      model = Model(inputs=input_layer, outputs=x, name="mirrored-encoder")
       model.summary()
 
     return model
