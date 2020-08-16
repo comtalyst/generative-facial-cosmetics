@@ -54,15 +54,10 @@ def load_dataset(model_type, n, strategy, batch=False):
     dataset = dataset.map(gen_img, num_parallel_calls=AUTO) 
 
   ## preprocess by specified model type
-  if model_type == None or type(model_type) != str:
-    dataset = dataset.map(preprocess, num_parallel_calls=AUTO) 
-  elif model_type.lower() in ['vgg', 'vgg16', 'vgg-16', 'vgg_16']:
+  if model_type != None and model_type == 'vgg16':
     dataset = dataset.map(preprocess_vgg16, num_parallel_calls=AUTO) 
-  else:
+  else:   # assume it requires 4 channels
     dataset = dataset.map(preprocess, num_parallel_calls=AUTO) 
-  
-  ## reshuffling after each iteration
-  dataset.shuffle(n, reshuffle_each_iteration=True)
 
   ## batching
   if batch:
