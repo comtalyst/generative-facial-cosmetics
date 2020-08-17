@@ -39,32 +39,37 @@ def load_checkpoint(model, strategy):
     model.load_weights(checkpoint_path)
 
 @tf.function
-def compute_loss(reals, predictions, loss_type=None, generator=None):
+def compute_loss(reals, predictions, loss_weights=None, generator=None):
   # return size = batch size (1 loss per batch)
-  # MSE (default)
-  if loss_type == None or loss_type == 'mse':
+  # single MSE (default)
+  if loss_weights == None:
     return losses.MSE(reals, predictions)
 
-  # generated image loss
-  elif loss_type == 'gen':
-    # generate images from generator
-    real_generateds = generator.model(reals, training=False)
-    prediction_generateds = generator.model(predictions, training=False)
+  # mixed losses
+  total_loss = 0.0
+  for loss_type, loss_w in loss_weights.items():
+    # generated image loss
+    if loss_type == 'gen':
+      real_generateds = generator.model(reals, training=False)
+      prediction_generateds = generator.model(predictions, training=False)
 
-    # flatten them to properly find the mean as a value
-    batch_size = reals.shape[0]
-    generated_size_flat = tf.math.reduce_prod(generator.model.output.shape[1:])     # skip 'none' in the first pos
-    new_size = (batch_size, generated_size_flat)
-    return losses.MSE(tf.keras.backend.reshape(real_generateds, new_size), tf.keras.backend.reshape(prediction_generateds, new_size))
+      # flatten them to properly find the mean as a value
+      batch_size = reals.shape[0]
+      generated_size_flat = tf.math.reduce_prod(generator.model.output.shape[1:])     # skip 'none' in the first pos
+      new_size = (batch_size, generated_size_flat)
+      total_loss = tf.math.add(total_loss, loss_w*losses.MSE(tf.keras.backend.reshape(real_generateds, new_size), tf.keras.backend.reshape(prediction_generateds, new_size)))
+    
+    # mean squared error
+    elif loss_type == 'mse':
+      total_loss = tf.math.add(total_loss, loss_w*losses.MSE(reals, predictions))
 
-  # unknown loss
-  else:
-    raise ValueError('Unknown loss_type: ' + str(loss_type))
-  
-
+    # unknown loss
+    else:
+      raise ValueError('Unknown loss_weights: ' + str(loss_weights))
+  return total_loss  
 
 @tf.function
-def test_step(model, data_batch, strategy, loss_type=None, generator=None):
+def test_step(model, data_batch, strategy, loss_weights=None, generator=None):
   ## unpack data batch
   images = data_batch[0]
   latents = data_batch[1]
@@ -73,7 +78,7 @@ def test_step(model, data_batch, strategy, loss_type=None, generator=None):
   def true_step(images, latents):
     ## forward prop
     logits = model(images, training=False)
-    batch_loss = compute_loss(latents, logits, loss_type, generator)
+    batch_loss = compute_loss(latents, logits, loss_weights, generator)
     return batch_loss
 
   ## execute the step
@@ -85,7 +90,7 @@ def test_step(model, data_batch, strategy, loss_type=None, generator=None):
   return strategy.reduce(tf.distribute.ReduceOp.SUM, batch_loss, axis=None)
 
 @tf.function
-def train_step(model, data_batch, optimizer, strategy, loss_type=None, generator=None):
+def train_step(model, data_batch, optimizer, strategy, loss_weights=None, generator=None):
   ## unpack data batch
   images = data_batch[0]
   latents = data_batch[1]
@@ -95,7 +100,7 @@ def train_step(model, data_batch, optimizer, strategy, loss_type=None, generator
     ## forward prop
     with tf.GradientTape() as tape:
       logits = model(images, training=True)
-      batch_loss = compute_loss(latents, logits, loss_type, generator)
+      batch_loss = compute_loss(latents, logits, loss_weights, generator)
 
     ## apply gradients
     grads = tape.gradient(batch_loss, model.trainable_variables)
@@ -111,7 +116,7 @@ def train_step(model, data_batch, optimizer, strategy, loss_type=None, generator
   return strategy.reduce(tf.distribute.ReduceOp.SUM, batch_loss, axis=None)
 
 def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strategy, 
-          loss_type=None, lr=DEFAULT_LR, restore_checkpoint=True):
+          loss_weights=None, lr=DEFAULT_LR, restore_checkpoint=True):
   ## inits
   model = encoder.model
   model_type = encoder.model_type
@@ -141,7 +146,7 @@ def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strate
     
     ## training steps
     for data_batch in training_dataset:
-      training_losses = tf.math.add(training_losses, train_step(model, data_batch, optimizer, strategy, loss_type, generator))
+      training_losses = tf.math.add(training_losses, train_step(model, data_batch, optimizer, strategy, loss_weights, generator))
       if FIRSTSTEP:
         print("First batch done!")
         FIRSTSTEP = False
@@ -149,7 +154,7 @@ def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strate
     
     ## cross validation testing
     for data_batch in validation_dataset:
-      validation_losses = tf.math.add(validation_losses, test_step(model, data_batch, strategy, loss_type, generator))
+      validation_losses = tf.math.add(validation_losses, test_step(model, data_batch, strategy, loss_weights, generator))
       n_batch_valid += 1
   
     ## loss summarization
