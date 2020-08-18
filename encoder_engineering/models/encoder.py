@@ -84,15 +84,15 @@ class Encoder:
       input_layer = layers.Input(self.IMAGE_SHAPE)
       x = input_layer
       
-      x = d_block(x, 64, 2)                       # 360x360x64, 180x180x64
-      x = d_block(x, 128, 2)                      # 180x180x128, 90x90x128
-      x = d_block(x, 256, 2)                      # 90x90x256, 45x45x256
-      x = d_block(x, 512, 3)                      # 45x45x512, 15x15x512
+      x = d_block(x, 32, 2)                       # 360x360x64, 180x180x64
+      x = d_block(x, 64, 2)                      # 180x180x128, 90x90x128
+      x = d_block(x, 128, 2)                      # 90x90x256, 45x45x256
+      x = d_block(x, 256, 3)                      # 45x45x512, 15x15x512
       x = d_block(x, 512, 3)                      # 15x15x512, 5x5x512
 
       x = layers.Flatten()(x)                     # 5*5*512 = 12800
-      x = layers.Dense(4096)(x)
-      x = layers.Dense(4096)(x)
+      x = layers.Dense(2048)(x)
+      x = layers.Dense(2048)(x)
       x = layers.Dense(self.LATENT_SIZE)(x)
 
       model = Model(inputs=input_layer, outputs=x, name="modified-vgg16-encoder")
