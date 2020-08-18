@@ -38,6 +38,14 @@ def load_checkpoint(model, strategy):
   with strategy.scope():
     model.load_weights(checkpoint_path)
 
+### for checkpoints saved using ckpt.save(), model=model
+def load_checkpoint_ckpt(model, strategy, path=None):
+  if path == None:
+    path = tf.train.latest_checkpoint(checkpoint_dir)     # depends on what noted in the "checkpoint." file
+    print("latest_checkpoint: " + path)
+  ckpt = tf.train.Checkpoint(model=model)
+  ckpt.restore(path)
+
 @tf.function
 def compute_loss(reals, predictions, loss_weights=None, generator=None):
   # return size = batch size (1 loss per batch)
@@ -122,10 +130,9 @@ def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strate
   model_type = encoder.model_type
   global FIRSTSTEP
 
-  ## restore checkpoints
+  ## restore checkpoints (new ver only)
   if restore_checkpoint:
     load_checkpoint(model, strategy)
-  ckpt = tf.train.Checkpoint(model=model)
 
   ## define optimizer
   optimizer = optimizer_type(lr)
@@ -163,7 +170,7 @@ def train(encoder, generator, dataset_gen_func, n_train, n_valid, epochs, strate
 
     ## reports and checkpoint saving
     print('Epoch {}: Average training loss = {}, Validation loss = {}'.format(epoch, training_loss, validation_loss))
-    ckpt.save(checkpoint_path)
+    model.save_weights(checkpoint_path)
     print('Time for epoch {} is {} sec, total {} sec, saved.'.format(epoch, time.time()-start, time.time()-allstart))
 
 ### for static dataset, probably not being used now
