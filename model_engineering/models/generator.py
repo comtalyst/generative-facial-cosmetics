@@ -18,11 +18,9 @@ class Generator:
 
   ###### Constants ######
 
-  LATENT_SIZE = 256
+  LATENT_SIZE = 512
   FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
-  model = None
-  model_fade = None         # fading-to-grown model
   image_shapes = {
     0: (5, 5, 4),
     1: (15, 15, 4),
@@ -31,19 +29,39 @@ class Generator:
     4: (180, 180, 4),
     5: (360, 360, 4)
   }
-
   current_progress = 0              # for GAN progressive training
+
+  ## to-be-defined
+  model = None
+  model_type = None
+  model_fade = None         # fading-to-grown model
 
   ###### Constructor ######
 
-  def __init__(self, strategy):
-    self.model = self.build_model(strategy)
+  def __init__(self, strategy, model_type=None):
+    # latent = 512
+    if model_type == None or model_type == '512':
+      model_type = '512'
+      self.model = self.build_model(strategy)
+    # latent = 256
+    elif model_type == '256':
+      self.model = self.build_model_256(strategy)
+    else:
+      raise ValueError('Unknown model_type: ' + str(model_type))
+    
+    self.model_type = model_type
     self.model_fade = self.model    # placeholder for checkpointing
   
   ###### Public Methods ######
 
   def progress(self, strategy):
-    self.model, self.model_fade = self.progress_model(self.model, strategy)
+    # latent = 512
+    if self.model_type == None or self.model_type == '512':
+      self.model, self.model_fade = self.progress_model(self.model, strategy)
+    # latent = 256
+    elif self.model_type == '256':
+      self.model, self.model_fade = self.progress_model_256(self.model, strategy)
+    
     self.current_progress += 1
   
   # save to SavedModel (does not include fade)
@@ -140,6 +158,109 @@ class Generator:
       # Map latent input
       latent = mapping_block(latent_input)
 
+      # Reshape to 5x5x512
+      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent)
+      x = layers.Reshape([5, 5, self.LATENT_SIZE])(x)
+      # Size: 5x5x512
+      self.image_shape = (5, 5, 4)
+
+      # output RGBA image
+      image_output = output_block(x)
+
+      # Make Model
+      model = Model(inputs = latent_input, outputs = image_output)
+
+      model.summary()
+
+    return model
+  
+  ## GAN progressive training: add layers
+  def progress_model(self, model, strategy):
+    AdaIN = self.AdaIN
+    g_block = self.g_block
+    output_block = self.output_block
+    current_progress = self.current_progress
+
+    if current_progress >= self.MAX_PROGRESS:
+      print("Maximum progress reached!")
+      return model
+    current_progress += 1
+
+    with strategy.scope():
+      # get layers from old model
+      old_output = model.layers[-(self.OUTPUT_BLOCK_LEN+1)].output
+      latent = model.layers[self.MAPPING_BLOCK_LEN].output            # indexing included input block (1)
+
+      if current_progress == 1:
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 512, 3)           # Size: 15x15x512
+        x = g_block(x, latent, 256, 1)                    # Size: 15x15x256
+        ## upsampling only path
+        y = layers.UpSampling2D(3)(old_output)            # Size: 15x15x512
+        self.image_shape = (15, 15, 4)
+
+      elif current_progress == 2:
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 128, 3)            # Size: 45x45x128
+        ## upsampling only path
+        y = layers.UpSampling2D(3)(old_output)            # Size: 45x45x256
+        self.image_shape = (45, 45, 4)
+
+      elif current_progress == 3:
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 64)               # Size: 90x90x64
+        ## upsampling only path
+        y = layers.UpSampling2D(2)(old_output)            # Size: 90x90x128
+        self.image_shape = (90, 90, 4)
+
+      elif current_progress == 4:
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 32)               # Size: 180x180x32
+        ## upsampling only path
+        y = layers.UpSampling2D(2)(old_output)            # Size: 180x180x64
+        self.image_shape = (180, 180, 4)
+
+      elif current_progress == 5:
+        ## main (upsampling + AdaIN) path
+        x = g_block(old_output, latent, 16)                # Size: 360x360x16
+        ## upsampling only path
+        y = layers.UpSampling2D(2)(old_output)            # Size: 360x360x32
+        self.image_shape = (360, 360, 4)
+      
+      # output RGBA image
+      full_output = output_block(x)                       # Size: ???x???x4
+
+      # use old (to be trashsed) output block for fading model
+      samp_output = y
+      for i in range(len(model.layers)-self.OUTPUT_BLOCK_LEN, len(model.layers)):
+        samp_output = model.layers[i](samp_output)        # Size: ???x???x4
+      fade_output = WeightedSum()([samp_output, full_output])    # transition from upsampling only to full
+
+      # Make new model on top of the old model
+      model_full = Model(inputs = model.input, outputs = full_output)
+      model_fade = Model(inputs = model.input, outputs = fade_output)
+
+      model_full.summary()
+    
+    # return progressed model
+    print("The model progressed to level " + str(current_progress))
+    return model_full, model_fade
+
+
+  ## build model (latent=256, pre-progress)
+  def build_model_256(self, strategy):
+    AdaIN = self.AdaIN
+    g_block = self.g_block
+    output_block = self.output_block
+    mapping_block = self.mapping_block
+
+    with strategy.scope():
+      # Latent input
+      latent_input = layers.Input([self.LATENT_SIZE])
+
+      # Map latent input
+      latent = mapping_block(latent_input)
+
       # Reshape to 5x5x256
       x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent)
       x = layers.Reshape([5, 5, self.LATENT_SIZE])(x)
@@ -156,13 +277,13 @@ class Generator:
 
     return model
   
-  ## GAN progressive training: add layers
+  ## GAN progressive training: add layers (latent=256)
   '''
   Fading Generator: 
 	  Full: Old Pre-Output Block --> Upsampling --> Conv/AdaIN --> New Output Block --> COMBINE THE RESULTING IMAGES
 	  Samp: Old Pre-Output Block --> Upsampling --> Old Output Block ----------------->
   '''
-  def progress_model(self, model, strategy):
+  def progress_model_256(self, model, strategy):
     AdaIN = self.AdaIN
     g_block = self.g_block
     output_block = self.output_block

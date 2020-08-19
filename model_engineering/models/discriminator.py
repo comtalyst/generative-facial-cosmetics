@@ -18,11 +18,9 @@ class Discriminator:
 
   ###### Constants ######
 
-  LATENT_SIZE = 256
+  LATENT_SIZE = 512
   FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
-  model = None
-  model_fade = None         # fading-to-grown model
   image_shapes = {
     0: (5, 5, 4),
     1: (15, 15, 4),
@@ -31,19 +29,39 @@ class Discriminator:
     4: (180, 180, 4),
     5: (360, 360, 4)
   }
-
   current_progress = 0              # for GAN progressive training
+
+  ## to-be-defined
+  model = None
+  model_type = None
+  model_fade = None         # fading-to-grown model
 
   ###### Constructor ######
 
-  def __init__(self, strategy):
-    self.model = self.build_model(strategy)
+  def __init__(self, strategy, model_type=None):
+    # latent = 512
+    if model_type == None or model_type == '512':
+      model_type = '512'
+      self.model = self.build_model(strategy)
+    # latent = 256
+    elif model_type == '256':
+      self.model = self.build_model_256(strategy)
+    else:
+      raise ValueError('Unknown model_type: ' + str(model_type))
+    
+    self.model_type = model_type
     self.model_fade = self.model    # placeholder for checkpointing
 
   ###### Public Methods ######
 
   def progress(self, strategy):   
-    self.model, self.model_fade = self.progress_model(self.model, strategy)
+    # latent = 512
+    if self.model_type == None or self.model_type == '512':
+      self.model, self.model_fade = self.progress_model(self.model, strategy)
+    # latent = 256
+    elif self.model_type == '256':
+      self.model, self.model_fade = self.progress_model_256(self.model, strategy)
+    
     self.current_progress += 1
   
   # save to SavedModel (does not include fade)
@@ -105,10 +123,10 @@ class Discriminator:
     with strategy.scope():
       # Image input
       self.image_shape = (5, 5, 4)
-      x, image_input = input_block((5, 5, 4), 256)        # Size: 5x5x256
+      x, image_input = input_block((5, 5, 4), 512)        # Size: 5x5x512
 
       # convert to prob for decision using 1-dimensional Neural Network
-      x = d_block(x, 512, reduce_times = 1)
+      x = d_block(x, 2048, reduce_times = 1)
       x = layers.Flatten()(x)
       x = layers.Dense(1)(x)
 
@@ -126,6 +144,114 @@ class Discriminator:
 	  Samp: New Input --> Downsampling --> Old Input Block ----------->
   '''
   def progress_model(self, model, strategy):
+    d_block = self.d_block
+    input_block = self.input_block
+    current_progress = self.current_progress
+
+    if current_progress >= self.MAX_PROGRESS:
+      print("Maximum progress reached!")
+      return model
+    current_progress += 1
+
+    with strategy.scope():
+      if current_progress == 1:
+        self.image_shape = (15, 15, 4)
+        x, image_input = input_block((15, 15, 4), 128)     # Size: 15x15x128
+        ## main (Conv + downsampling) path
+        x = d_block(x, 256, 1)                            # Size: 15x15x256
+        x = d_block(x, 512, 3)                            # Size: 5x5x512
+        # should now be match with y's preferred input shape
+        ## downsampling only path
+        y = layers.AveragePooling2D(3)(image_input)       # Size: 5x5x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 5x5x512
+
+      elif current_progress == 2:
+        self.image_shape = (45, 45, 4)
+        x, image_input = input_block((45, 45, 4), 64)     # Size: 45x45x64
+        ## main (Conv + downsampling) path
+        x = d_block(x, 128, 3)                             # Size: 15x15x128
+        ## downsampling only path
+        y = layers.AveragePooling2D(3)(image_input)       # Size: 15x15x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 15x15x128
+
+      elif current_progress == 3:
+        self.image_shape = (90, 90, 4)
+        x, image_input = input_block((90, 90, 4), 32)     # Size: 90x90x32
+        ## main (Conv + downsampling) path
+        x = d_block(x, 64, 2)                             # Size: 45x45x64
+        ## downsampling only path
+        y = layers.AveragePooling2D(2)(image_input)       # Size: 45x45x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 45x45x64
+
+      elif current_progress == 4:
+        self.image_shape = (180, 180, 4)
+        x, image_input = input_block((180, 180, 4), 8)    # Size: 180x180x8
+        ## main (Conv + downsampling) path
+        x = d_block(x, 32, 2)                             # Size: 90x90x32
+        ## downsampling only path
+        y = layers.AveragePooling2D(2)(image_input)       # Size: 90x90x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 90x90x32
+
+      elif current_progress == 5:
+        self.image_shape = (360, 360, 4)
+        x, image_input = input_block((360, 360, 4), 4)    # Size: 360x360x4
+        ## main (Conv + downsampling) path
+        x = d_block(image_input, 16)                       # Size: 180x180x16
+        ## downsampling only path
+        y = layers.AveragePooling2D(2)(image_input)       # Size: 180x180x4
+        # use old (to be trashsed) input block
+        for i in range(1, self.INPUT_BLOCK_LEN):
+          y = model.layers[i](y)                          # Size: 180x180x16
+      
+      # merge for fading model
+      merged = WeightedSum()([y, x])
+
+      # continue on with the model
+      for i in range(self.INPUT_BLOCK_LEN, len(model.layers)):
+        x = model.layers[i](x)
+        merged = model.layers[i](merged)
+
+      # Make new model on top of the old model
+      model_full = Model(inputs = image_input, outputs = x)
+      model_fade = Model(inputs = image_input, outputs = merged)
+
+      model_full.summary()
+    
+    # return progressed model
+    print("The model progressed to level " + str(current_progress))
+    return model_full, model_fade
+
+  def build_model_256(self, strategy):
+    d_block = self.d_block
+    input_block = self.input_block
+
+    with strategy.scope():
+      # Image input
+      self.image_shape = (5, 5, 4)
+      x, image_input = input_block((5, 5, 4), 256)        # Size: 5x5x256
+
+      # convert to prob for decision using 1-dimensional Neural Network
+      x = d_block(x, 2048, reduce_times = 1)
+      x = layers.Flatten()(x)
+      x = layers.Dense(1)(x)
+
+      # Make Model
+      model = Model(inputs = image_input, outputs = x)
+
+      model.summary()
+
+    return model
+  
+  ## GAN progressive training: add layers
+  def progress_model_256(self, model, strategy):
     d_block = self.d_block
     input_block = self.input_block
     current_progress = self.current_progress
@@ -210,5 +336,4 @@ class Discriminator:
     # return progressed model
     print("The model progressed to level " + str(current_progress))
     return model_full, model_fade
-
 
