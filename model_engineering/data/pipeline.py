@@ -53,6 +53,10 @@ def data_augment(image, id):
     image = tf.image.central_crop(image, random_scale)              # crop from center
     image = Image.fromarray(image.numpy()).resize(IMAGE_SIZE)       # resize back using PIL
     image = tf.convert_to_tensor(np.array(image))                   # convert back to tf tensor
+  
+  ## random rotate
+  max_degree = 40
+  image = tf.keras.preprocessing.image.random_rotation(image, max_degree, row_axis=0, col_axis=1, channel_axis=2)
 
   return (image, id)
 
