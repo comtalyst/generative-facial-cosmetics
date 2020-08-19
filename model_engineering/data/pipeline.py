@@ -56,7 +56,8 @@ def data_augment(image, id):
   
   ## random rotate
   max_degree = 40
-  image = tf.keras.preprocessing.image.random_rotation(image, max_degree, row_axis=0, col_axis=1, channel_axis=2)
+  if str(id)[0] != 'T':
+    image = tf.convert_to_tensor(tf.keras.preprocessing.image.random_rotation(image.numpy(), max_degree, row_axis=0, col_axis=1, channel_axis=2))
 
   return (image, id)
 
