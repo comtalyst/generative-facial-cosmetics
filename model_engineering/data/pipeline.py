@@ -79,6 +79,7 @@ def load_dataset(filenames, shuffle=False, batch=False, augment=False, json_map=
   if augment:
     global JSON 
     JSON = json_map
+    dataset = dataset.repeat(2)
     dataset = dataset.map(data_augment, num_parallel_calls=AUTO)
   if shuffle:
     dataset = dataset.shuffle(len(filenames))
