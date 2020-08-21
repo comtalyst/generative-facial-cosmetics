@@ -54,17 +54,19 @@ class Generator:
   
   ###### Public Methods ######
 
-  def progress(self, strategy):
+  def progress(self, strategy, silent=False):
+    if self.current_progress >= self.MAX_PROGRESS:
+      print("Maximum progress reached!")
+      return
+    self.current_progress += 1
     # latent = 512
     if self.model_type == None or self.model_type == '512':
-      self.model, self.model_fade = self.progress_model(self.model, strategy)
+      self.model, self.model_fade = self.progress_model(self.model, self.current_progress, strategy, silent)
     # latent = 256
     elif self.model_type == '256':
-      self.model, self.model_fade = self.progress_model_256(self.model, strategy)
+      self.model, self.model_fade = self.progress_model_256(self.model, self.current_progress, strategy, silent)
     
-    self.current_progress += 1
-  
-  # save to SavedModel (does not include fade)
+  ## save to SavedModel (does not include fade)
   def save(self, epoch, strategy, dir = None):
     model = self.model
 
@@ -74,7 +76,7 @@ class Generator:
     with strategy.scope():
       model.save(os.path.join(dir, fname))
 
-  # either specify dir/fname or path (path takes priority)
+  ## either specify dir/fname or path (path takes priority)
   def load(self, its_progress, strategy, dir = None, fname = None, path = None):
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
@@ -88,7 +90,7 @@ class Generator:
       self.model.summary()
     self.image_shape = self.image_shapes[self.current_progress]
 
-  # set alpha value for fading-in model
+  ## set alpha value for fading-in model
   def setAlpha(self, new_alpha):
     found = False
     for layer in self.model_fade.layers:
@@ -98,7 +100,41 @@ class Generator:
     if not found:
       raise RuntimeError("Cannot set alpha on undefined model_fade; make sure this is not a first-gen model")
 
-  ###### Functions ######
+  ## get model with injection options based on current self.model
+  def get_injectible_model(self, strategy):
+    '''
+    There is a possible alternative method where we reconstruct the graph, attach new inputs
+    then topologically rebuild the model. That method will save more memory, but at the cost of
+    more complex implementation.
+    '''
+    ## construct a new model with the same architecture
+    # latent = 512
+    if self.model_type == None or self.model_type == '512':
+      injectible_model = self.build_model(strategy, True)
+      for i in range(self.current_progress):
+        injectible_model, _ = self.progress_model(injectible_model, i+1, strategy, True, True)
+    # latent = 256
+    elif self.model_type == '256':
+      injectible_model = self.build_model_256(strategy, True)
+      for i in range(self.current_progress):
+        injectible_model, _ = self.progress_model_256(injectible_model, i+1, strategy, True, True)
+
+    ## transfer weights 
+    old_pointer_idx = 0
+    for layer in injectible_model.layers:
+      if layer.name.startswith('input'):
+        continue
+      while self.model.layers[old_pointer_idx].name.startswith('input'):
+        old_pointer_idx += 1
+      old_layer = self.model.layers[old_pointer_idx]
+      layer.set_weights(old_layer.get_weights())
+      old_pointer_idx += 1
+    
+    injectible_model.summary()
+
+    return injectible_model
+
+  ###### Blocks ######
 
   def AdaIN(self, x):
     # Normalize x[0] (image representation)
@@ -121,12 +157,12 @@ class Generator:
     latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
     return latent
 
-  def g_block(self, input_tensor, latent_vector, filters, upsamp=2):
+  def g_block(self, input_tensor, latent_vector, filters, upsamp):
     # Warning: this block is not a straight line!
     AdaIN = self.AdaIN
 
-    gamma = layers.Dense(units=filters, bias_initializer = 'ones')(latent_vector)
-    beta = layers.Dense(units=filters)(latent_vector)
+    gamma = layers.Dense(units=filters, bias_initializer = 'ones', name='latent_gamma_'+str(filters))(latent_vector)
+    beta = layers.Dense(units=filters, name='latent_beta_'+str(filters))(latent_vector)
     
     if upsamp > 1:
       out = layers.UpSampling2D(upsamp)(input_tensor)
@@ -144,8 +180,20 @@ class Generator:
     x = layers.Conv2D(channels, 1, padding = 'same', activation = 'sigmoid')(input_tensor)
     return x
 
+  ###### Utils ######
+
+  ## get get new latent from input and map them
+  def get_new_latent(self, model):
+    new_input = layers.Input([self.LATENT_SIZE])
+    new_latent = new_input
+    for i in range(1, self.MAPPING_BLOCK_LEN+1):
+      new_latent = model.layers[i](new_latent)
+    return new_latent, new_input
+
+  ###### Modeling ######
+
   ## build model (pre-progress)
-  def build_model(self, strategy):
+  def build_model(self, strategy, silent=False):
     AdaIN = self.AdaIN
     g_block = self.g_block
     output_block = self.output_block
@@ -170,62 +218,103 @@ class Generator:
       # Make Model
       model = Model(inputs = latent_input, outputs = image_output)
 
-      model.summary()
+      if not silent:
+        model.summary()
 
     return model
   
   ## GAN progressive training: add layers
-  def progress_model(self, model, strategy):
+  def progress_model(self, model, next_progress, strategy, silent=False, injectible=False):
     AdaIN = self.AdaIN
     g_block = self.g_block
     output_block = self.output_block
-    current_progress = self.current_progress
-
-    if current_progress >= self.MAX_PROGRESS:
-      print("Maximum progress reached!")
-      return model
-    current_progress += 1
 
     with strategy.scope():
       # get layers from old model
       old_output = model.layers[-(self.OUTPUT_BLOCK_LEN+1)].output
-      latent = model.layers[self.MAPPING_BLOCK_LEN].output            # indexing included input block (1)
+      old_latent = model.layers[self.MAPPING_BLOCK_LEN].output            # indexing included input block (1)
+      new_inputs = model.inputs
 
-      if current_progress == 1:
+      if next_progress == 1:
         ## main (upsampling + AdaIN) path
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
         x = g_block(old_output, latent, 512, 3)           # Size: 15x15x512
+
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
         x = g_block(x, latent, 256, 1)                    # Size: 15x15x256
+
         ## upsampling only path
         y = layers.UpSampling2D(3)(old_output)            # Size: 15x15x512
         self.image_shape = (15, 15, 4)
 
-      elif current_progress == 2:
+      elif next_progress == 2:
         ## main (upsampling + AdaIN) path
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
         x = g_block(old_output, latent, 128, 3)            # Size: 45x45x128
+
         ## upsampling only path
         y = layers.UpSampling2D(3)(old_output)            # Size: 45x45x256
         self.image_shape = (45, 45, 4)
 
-      elif current_progress == 3:
+      elif next_progress == 3:
         ## main (upsampling + AdaIN) path
-        x = g_block(old_output, latent, 64)               # Size: 90x90x64
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
+        x = g_block(old_output, latent, 64, 2)               # Size: 90x90x64
+
         ## upsampling only path
         y = layers.UpSampling2D(2)(old_output)            # Size: 90x90x128
         self.image_shape = (90, 90, 4)
 
-      elif current_progress == 4:
+      elif next_progress == 4:
         ## main (upsampling + AdaIN) path
-        x = g_block(old_output, latent, 32)               # Size: 180x180x32
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
+        x = g_block(old_output, latent, 32, 2)               # Size: 180x180x32
+
         ## upsampling only path
         y = layers.UpSampling2D(2)(old_output)            # Size: 180x180x64
         self.image_shape = (180, 180, 4)
 
-      elif current_progress == 5:
+      elif next_progress == 5:
         ## main (upsampling + AdaIN) path
-        x = g_block(old_output, latent, 16)                # Size: 360x360x16
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
+        x = g_block(old_output, latent, 16, 2)                # Size: 360x360x16
+
         ## upsampling only path
         y = layers.UpSampling2D(2)(old_output)            # Size: 360x360x32
         self.image_shape = (360, 360, 4)
+      else:
+        print('Unknown progress level')
+        return None
       
       # output RGBA image
       full_output = output_block(x)                       # Size: ???x???x4
@@ -237,18 +326,18 @@ class Generator:
       fade_output = WeightedSum()([samp_output, full_output])    # transition from upsampling only to full
 
       # Make new model on top of the old model
-      model_full = Model(inputs = model.input, outputs = full_output)
-      model_fade = Model(inputs = model.input, outputs = fade_output)
+      model_full = Model(inputs = new_inputs, outputs = full_output)
+      model_fade = Model(inputs = new_inputs, outputs = fade_output)
 
-      model_full.summary()
+      if not silent:
+        model_full.summary()
+        print("The model progressed to level " + str(next_progress))
     
     # return progressed model
-    print("The model progressed to level " + str(current_progress))
     return model_full, model_fade
 
-
   ## build model (latent=256, pre-progress)
-  def build_model_256(self, strategy):
+  def build_model_256(self, strategy, silent=False):
     AdaIN = self.AdaIN
     g_block = self.g_block
     output_block = self.output_block
@@ -273,67 +362,108 @@ class Generator:
       # Make Model
       model = Model(inputs = latent_input, outputs = image_output)
 
-      model.summary()
+      if not silent:
+        model.summary()
 
     return model
   
-  ## GAN progressive training: add layers (latent=256)
-  '''
-  Fading Generator: 
-	  Full: Old Pre-Output Block --> Upsampling --> Conv/AdaIN --> New Output Block --> COMBINE THE RESULTING IMAGES
-	  Samp: Old Pre-Output Block --> Upsampling --> Old Output Block ----------------->
-  '''
-  def progress_model_256(self, model, strategy):
+  ## GAN progressive training: add layers (latent=256)  
+  def progress_model_256(self, model, next_progress, strategy, silent=False, injectible=False):
+    '''
+    Fading Generator: 
+      Full: Old Pre-Output Block --> Upsampling --> Conv/AdaIN --> New Output Block --> COMBINE THE RESULTING IMAGES
+      Samp: Old Pre-Output Block --> Upsampling --> Old Output Block ----------------->
+    '''
     AdaIN = self.AdaIN
     g_block = self.g_block
     output_block = self.output_block
-    current_progress = self.current_progress
-
-    if current_progress >= self.MAX_PROGRESS:
-      print("Maximum progress reached!")
-      return model
-    current_progress += 1
 
     with strategy.scope():
       # get layers from old model
       old_output = model.layers[-(self.OUTPUT_BLOCK_LEN+1)].output
-      latent = model.layers[self.MAPPING_BLOCK_LEN].output            # indexing included input block (1)
+      old_latent = model.layers[self.MAPPING_BLOCK_LEN].output            # indexing included input block (1)
+      new_inputs = model.inputs
 
-      if current_progress == 1:
+      if next_progress == 1:
         ## main (upsampling + AdaIN) path
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
         x = g_block(old_output, latent, 256, 3)           # Size: 15x15x256
+
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
         x = g_block(x, latent, 128, 1)                    # Size: 15x15x128
+
         ## upsampling only path
         y = layers.UpSampling2D(3)(old_output)            # Size: 15x15x256
         self.image_shape = (15, 15, 4)
 
-      elif current_progress == 2:
+      elif next_progress == 2:
         ## main (upsampling + AdaIN) path
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
         x = g_block(old_output, latent, 64, 3)            # Size: 45x45x64
+
         ## upsampling only path
         y = layers.UpSampling2D(3)(old_output)            # Size: 45x45x128
         self.image_shape = (45, 45, 4)
 
-      elif current_progress == 3:
+      elif next_progress == 3:
         ## main (upsampling + AdaIN) path
-        x = g_block(old_output, latent, 32)               # Size: 90x90x32
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
+        x = g_block(old_output, latent, 32, 2)               # Size: 90x90x32
+
         ## upsampling only path
         y = layers.UpSampling2D(2)(old_output)            # Size: 90x90x64
         self.image_shape = (90, 90, 4)
 
-      elif current_progress == 4:
+      elif next_progress == 4:
         ## main (upsampling + AdaIN) path
-        x = g_block(old_output, latent, 16)               # Size: 180x180x16
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
+        x = g_block(old_output, latent, 16, 2)               # Size: 180x180x16
+
         ## upsampling only path
         y = layers.UpSampling2D(2)(old_output)            # Size: 180x180x32
         self.image_shape = (180, 180, 4)
 
-      elif current_progress == 5:
+      elif next_progress == 5:
         ## main (upsampling + AdaIN) path
-        x = g_block(old_output, latent, 8)                # Size: 360x360x8
+        if injectible:
+          new_latent, new_input = self.get_new_latent(model)
+          new_inputs.append(new_input)
+          latent = new_latent
+        else:
+          latent = old_latent
+        x = g_block(old_output, latent, 8, 2)                # Size: 360x360x8
+
         ## upsampling only path
         y = layers.UpSampling2D(2)(old_output)            # Size: 360x360x16
         self.image_shape = (360, 360, 4)
+      else:
+        print('Unknown progress level')
+        return None
       
       # output RGBA image
       full_output = output_block(x)                       # Size: ???x???x4
@@ -345,12 +475,26 @@ class Generator:
       fade_output = WeightedSum()([samp_output, full_output])    # transition from upsampling only to full
 
       # Make new model on top of the old model
-      model_full = Model(inputs = model.input, outputs = full_output)
-      model_fade = Model(inputs = model.input, outputs = fade_output)
+      model_full = Model(inputs = new_inputs, outputs = full_output)
+      model_fade = Model(inputs = new_inputs, outputs = fade_output)
 
-      model_full.summary()
+      if not silent:
+        model_full.summary()
+        print("The model progressed to level " + str(next_progress))
     
     # return progressed model
-    print("The model progressed to level " + str(current_progress))
     return model_full, model_fade
+ 
+    ## get model that is injectible by other latent vectors
 
+  ## currently unused
+  def get_injectible_layers(self):
+    injectibles = list()
+    for layer in self.model.layers:
+      try:
+        if list(layer.input.shape) == [None, self.LATENT_SIZE] and not layer.name.startswith('input'):
+            injectibles.append(layer)
+      except:
+        pass
+    injectibles = injectibles[self.MAPPING_BLOCK_LEN+1:]
+    return injectibles
