@@ -231,6 +231,27 @@ def detect_and_crop_lips(img_path=None, img_bytes=None, img_full=None):
     lips_landmarks_y[i] -= min_y - offset[1]
     lips_landmarks[i] = (int(lips_landmarks_x[i] - (min_x - offset[0])), int(lips_landmarks_y[i] - (min_y - offset[1])))
   
-  return box
+  return box, [min_x, min_y, max_x, max_y, offset[0], offset[1]]
+
+def replace_lips(cropped_lips, p_data, img_path=None, img_bytes=None, img_full=None):
+  img = None
+  if type(img_full) != type(None):
+    img = img_full
+  elif type(img_bytes) != type(None):              # bytes provided
+    img = cv2.imdecode(np.fromstring(img_bytes, np.uint8), cv2.IMREAD_COLOR)
+  elif type(img_path) != type(None):             # path provided
+    img = cv2.imread(img_path)
+  else:
+    raise ValueError('No images provided')
+
+  min_x, min_y, max_x, max_y, offset_x, offset_y = p_data
+  cropped_lips_pil = Image.fromarray((cropped_lips*255).astype('uint8'))
+  cropped_lips_pil = cropped_lips_pil.crop((offset_x, offset_y, offset_x+(max_x-min_x), offset_y+(max_y-min_y)))
+  img_pil = Image.fromarray(cv2.cvtColor(img, cv2.COLOR_BGR2RGBA))
+  img_pil.paste(cropped_lips_pil, (min_x, min_y), cropped_lips_pil)
+  plt.imshow(img_pil)
+
+  return img_pil
+
 
 ###### Execution ######
