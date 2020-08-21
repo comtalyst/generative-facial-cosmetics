@@ -122,9 +122,9 @@ class Generator:
     ## transfer weights 
     old_pointer_idx = 0
     for layer in injectible_model.layers:
-      if len(layer.get_weights()) == 0:
+      if len(layer.get_weights()) == 0:       # input layers do not have weights and will fall into this trap
         continue
-      while len(self.model.layers[old_pointer_idx].get_weights()) == 0:
+      while len(self.model.layers[old_pointer_idx].get_weights()) == 0: # this one too
         old_pointer_idx += 1
       old_layer = self.model.layers[old_pointer_idx]
       layer.set_weights(old_layer.get_weights())
