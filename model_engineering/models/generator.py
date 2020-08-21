@@ -122,9 +122,9 @@ class Generator:
     ## transfer weights 
     old_pointer_idx = 0
     for layer in injectible_model.layers:
-      if layer.name.startswith('input'):
+      if len(layer.get_weights()) == 0:
         continue
-      while self.model.layers[old_pointer_idx].name.startswith('input'):
+      while len(self.model.layers[old_pointer_idx].get_weights()) == 0:
         old_pointer_idx += 1
       old_layer = self.model.layers[old_pointer_idx]
       layer.set_weights(old_layer.get_weights())
@@ -152,39 +152,45 @@ class Generator:
   
   def mapping_block(self, latent_input):
     self.MAPPING_BLOCK_LEN = 3
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent_input)
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
+    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu', name='mapping_dense0')(latent_input)
+    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu', name='mapping_dense1')(latent)
+    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu', name='mapping_dense2')(latent)
     return latent
 
-  def g_block(self, input_tensor, latent_vector, filters, upsamp):
+  def g_block(self, input_tensor, latent_vector, filters, upsamp, name=None):
     # Warning: this block is not a straight line!
     AdaIN = self.AdaIN
 
-    gamma = layers.Dense(units=filters, bias_initializer = 'ones', name='latent_gamma_'+str(filters))(latent_vector)
-    beta = layers.Dense(units=filters, name='latent_beta_'+str(filters))(latent_vector)
+    if name == None:
+      name = str(filters)
+
+    gamma = layers.Dense(units=filters, bias_initializer = 'ones', name=name+'_latent_gamma')(latent_vector)
+    beta = layers.Dense(units=filters, name=name+'_latent_beta')(latent_vector)
     
     if upsamp > 1:
-      out = layers.UpSampling2D(upsamp)(input_tensor)
+      out = layers.UpSampling2D(upsamp, name=name+'_upsamp')(input_tensor)
     else:
       out = input_tensor
-    out = layers.Conv2D(filters=filters, kernel_size=3, padding = 'same')(out)
+    out = layers.Conv2D(filters=filters, kernel_size=3, padding = 'same', name=name+'_conv')(out)
     out = layers.Lambda(AdaIN)([out, gamma, beta])
-    out = layers.Activation('relu')(out)
+    out = layers.Activation('relu', name=name+'_activ')(out)
     
     return out
   
   def output_block(self, input_tensor, channels=4):
     self.OUTPUT_BLOCK_LEN = 1
     # make RGBA with values between 0 and 1
-    x = layers.Conv2D(channels, 1, padding = 'same', activation = 'sigmoid')(input_tensor)
+    x = layers.Conv2D(channels, 1, padding = 'same', activation = 'sigmoid', name='output_'+str(input_tensor.shape[1]) + '_conv')(input_tensor)
     return x
 
   ###### Utils ######
 
   ## get get new latent from input and map them
-  def get_new_latent(self, model):
-    new_input = layers.Input([self.LATENT_SIZE])
+  def get_new_latent(self, model, name=None):
+    if name == None:
+      new_input = layers.Input([self.LATENT_SIZE])
+    else:
+      new_input = layers.Input([self.LATENT_SIZE], name=name+'_input')
     new_latent = new_input
     for i in range(1, self.MAPPING_BLOCK_LEN+1):
       new_latent = model.layers[i](new_latent)
@@ -201,14 +207,14 @@ class Generator:
 
     with strategy.scope():
       # Latent input
-      latent_input = layers.Input([self.LATENT_SIZE])
+      latent_input = layers.Input([self.LATENT_SIZE], name='root_input')
 
       # Map latent input
       latent = mapping_block(latent_input)
 
       # Reshape to 5x5x512
-      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent)
-      x = layers.Reshape([5, 5, self.LATENT_SIZE])(x)
+      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu', name='aftermap_dense')(latent)
+      x = layers.Reshape([5, 5, self.LATENT_SIZE], name='aftermap_reshape')(x)
       # Size: 5x5x512
       self.image_shape = (5, 5, 4)
 
@@ -238,7 +244,7 @@ class Generator:
       if next_progress == 1:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '512')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -246,7 +252,7 @@ class Generator:
         x = g_block(old_output, latent, 512, 3)           # Size: 15x15x512
 
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '256')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -260,7 +266,7 @@ class Generator:
       elif next_progress == 2:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '128')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -274,7 +280,7 @@ class Generator:
       elif next_progress == 3:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '64')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -288,7 +294,7 @@ class Generator:
       elif next_progress == 4:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '32')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -302,7 +308,7 @@ class Generator:
       elif next_progress == 5:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '16')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -387,7 +393,7 @@ class Generator:
       if next_progress == 1:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '256')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -395,7 +401,7 @@ class Generator:
         x = g_block(old_output, latent, 256, 3)           # Size: 15x15x256
 
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '128')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -409,7 +415,7 @@ class Generator:
       elif next_progress == 2:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '64')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -423,7 +429,7 @@ class Generator:
       elif next_progress == 3:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '32')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -437,7 +443,7 @@ class Generator:
       elif next_progress == 4:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '16')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -451,7 +457,7 @@ class Generator:
       elif next_progress == 5:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model)
+          new_latent, new_input = self.get_new_latent(model, '8')
           new_inputs.append(new_input)
           latent = new_latent
         else:
@@ -492,7 +498,7 @@ class Generator:
     injectibles = list()
     for layer in self.model.layers:
       try:
-        if list(layer.input.shape) == [None, self.LATENT_SIZE] and not layer.name.startswith('input'):
+        if list(layer.input.shape) == [None, self.LATENT_SIZE] and len(layer.get_weights()) != 0:
             injectibles.append(layer)
       except:
         pass
