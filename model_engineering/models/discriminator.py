@@ -100,20 +100,23 @@ class Discriminator:
   
   ###### Functions ######
 
-  def d_block(self, input_tensor, filters, reduce_times = 2):
-    out = layers.Conv2D(filters, 3, padding = 'same')(input_tensor)
-    out = layers.LeakyReLU(0.2)(out)
+  def d_block(self, input_tensor, filters, reduce_times = 2, name=None):
+    if name == None:
+      name = str(filters)
+
+    out = layers.Conv2D(filters, 3, padding = 'same', name=name+'_conv')(input_tensor)
+    out = layers.LeakyReLU(0.2, name=name+'_activ')(out)
     if reduce_times > 1:
-      out = layers.AveragePooling2D(reduce_times)(out)
+      out = layers.AveragePooling2D(reduce_times, name=name+'_downsamp')(out)
     return out
   
   def input_block(self, shape, filters):
     self.INPUT_BLOCK_LEN = 3
     # Image input
-    image_input = layers.Input(shape)
+    image_input = layers.Input(shape, name='input_'+str(shape[0]))
     # expand filters without affecting other variables (this layer will be deleted in the next generation)
-    x = layers.Conv2D(filters, 1, padding = 'same')(image_input)
-    x = layers.LeakyReLU(0.2)(x)
+    x = layers.Conv2D(filters, 1, padding = 'same', name='input_'+str(shape[0])+'_conv')(image_input)
+    x = layers.LeakyReLU(0.2, name='input_'+str(shape[0])+'_activ')(x)
     return x, image_input
     
   def build_model(self, strategy):
@@ -128,7 +131,7 @@ class Discriminator:
       # convert to prob for decision using 1-dimensional Neural Network
       x = d_block(x, 2048, reduce_times = 1)
       x = layers.Flatten()(x)
-      x = layers.Dense(1)(x)
+      x = layers.Dense(1, name='final_dense')(x)
 
       # Make Model
       model = Model(inputs = image_input, outputs = x)
@@ -138,11 +141,6 @@ class Discriminator:
     return model
   
   ## GAN progressive training: add layers
-  '''
-  Fading Discriminator: 
-	  Full: New Input --> New Input Block --> Conv --> Downsampling --> COMBINE --> Old Layers
-	  Samp: New Input --> Downsampling --> Old Input Block ----------->
-  '''
   def progress_model(self, model, strategy):
     d_block = self.d_block
     input_block = self.input_block
@@ -162,7 +160,7 @@ class Discriminator:
         x = d_block(x, 512, 3)                            # Size: 5x5x512
         # should now be match with y's preferred input shape
         ## downsampling only path
-        y = layers.AveragePooling2D(3)(image_input)       # Size: 5x5x4
+        y = layers.AveragePooling2D(3, name='512_fade_downsamp')(image_input)       # Size: 5x5x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 5x5x512
@@ -173,7 +171,7 @@ class Discriminator:
         ## main (Conv + downsampling) path
         x = d_block(x, 128, 3)                             # Size: 15x15x128
         ## downsampling only path
-        y = layers.AveragePooling2D(3)(image_input)       # Size: 15x15x4
+        y = layers.AveragePooling2D(3, name='128_fade_downsamp')(image_input)       # Size: 15x15x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 15x15x128
@@ -184,7 +182,7 @@ class Discriminator:
         ## main (Conv + downsampling) path
         x = d_block(x, 64, 2)                             # Size: 45x45x64
         ## downsampling only path
-        y = layers.AveragePooling2D(2)(image_input)       # Size: 45x45x4
+        y = layers.AveragePooling2D(2, name='64_fade_downsamp')(image_input)       # Size: 45x45x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 45x45x64
@@ -195,7 +193,7 @@ class Discriminator:
         ## main (Conv + downsampling) path
         x = d_block(x, 32, 2)                             # Size: 90x90x32
         ## downsampling only path
-        y = layers.AveragePooling2D(2)(image_input)       # Size: 90x90x4
+        y = layers.AveragePooling2D(2, name='32_fade_downsamp')(image_input)       # Size: 90x90x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 90x90x32
@@ -206,7 +204,7 @@ class Discriminator:
         ## main (Conv + downsampling) path
         x = d_block(image_input, 16)                       # Size: 180x180x16
         ## downsampling only path
-        y = layers.AveragePooling2D(2)(image_input)       # Size: 180x180x4
+        y = layers.AveragePooling2D(2, name='16_fade_downsamp')(image_input)       # Size: 180x180x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 180x180x16
@@ -241,7 +239,7 @@ class Discriminator:
       # convert to prob for decision using 1-dimensional Neural Network
       x = d_block(x, 2048, reduce_times = 1)
       x = layers.Flatten()(x)
-      x = layers.Dense(1)(x)
+      x = layers.Dense(1, name='final_dense')(x)
 
       # Make Model
       model = Model(inputs = image_input, outputs = x)
@@ -252,6 +250,11 @@ class Discriminator:
   
   ## GAN progressive training: add layers
   def progress_model_256(self, model, strategy):
+    '''
+    Fading Discriminator: 
+      Full: New Input --> New Input Block --> Conv --> Downsampling --> COMBINE --> Old Layers
+      Samp: New Input --> Downsampling --> Old Input Block ----------->
+    '''
     d_block = self.d_block
     input_block = self.input_block
     current_progress = self.current_progress
@@ -270,7 +273,7 @@ class Discriminator:
         x = d_block(x, 256, 3)                            # Size: 5x5x256
         # should now be match with y's preferred input shape
         ## downsampling only path
-        y = layers.AveragePooling2D(3)(image_input)       # Size: 5x5x4
+        y = layers.AveragePooling2D(3, name='256_fade_downsamp')(image_input)       # Size: 5x5x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 5x5x256
@@ -281,7 +284,7 @@ class Discriminator:
         ## main (Conv + downsampling) path
         x = d_block(x, 64, 3)                             # Size: 15x15x64
         ## downsampling only path
-        y = layers.AveragePooling2D(3)(image_input)       # Size: 15x15x4
+        y = layers.AveragePooling2D(3, name='64_fade_downsamp')(image_input)       # Size: 15x15x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 15x15x64
@@ -292,7 +295,7 @@ class Discriminator:
         ## main (Conv + downsampling) path
         x = d_block(x, 32, 2)                             # Size: 45x45x32
         ## downsampling only path
-        y = layers.AveragePooling2D(2)(image_input)       # Size: 45x45x4
+        y = layers.AveragePooling2D(2, name='32_fade_downsamp')(image_input)       # Size: 45x45x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 45x45x32
@@ -303,7 +306,7 @@ class Discriminator:
         ## main (Conv + downsampling) path
         x = d_block(x, 16, 2)                             # Size: 90x90x16
         ## downsampling only path
-        y = layers.AveragePooling2D(2)(image_input)       # Size: 90x90x4
+        y = layers.AveragePooling2D(2, name='16_fade_downsamp')(image_input)       # Size: 90x90x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 90x90x16
@@ -314,7 +317,7 @@ class Discriminator:
         ## main (Conv + downsampling) path
         x = d_block(image_input, 8)                       # Size: 180x180x8
         ## downsampling only path
-        y = layers.AveragePooling2D(2)(image_input)       # Size: 180x180x4
+        y = layers.AveragePooling2D(2, name='8_fade_downsamp')(image_input)       # Size: 180x180x4
         # use old (to be trashsed) input block
         for i in range(1, self.INPUT_BLOCK_LEN):
           y = model.layers[i](y)                          # Size: 180x180x8
