@@ -191,7 +191,7 @@ class Discriminator:
 
       elif current_progress == 4:
         self.image_shape = (180, 180, 4)
-        x, image_input = input_block((180, 180, 4), 8)    # Size: 180x180x8
+        x, image_input = input_block((180, 180, 4), 16)    # Size: 180x180x16
         ## main (Conv + downsampling) path
         x = d_block(x, 32, 2)                             # Size: 90x90x32
         ## downsampling only path
@@ -202,7 +202,7 @@ class Discriminator:
 
       elif current_progress == 5:
         self.image_shape = (360, 360, 4)
-        x, image_input = input_block((360, 360, 4), 4)    # Size: 360x360x4
+        x, image_input = input_block((360, 360, 4), 8)    # Size: 360x360x8
         ## main (Conv + downsampling) path
         x = d_block(image_input, 16)                       # Size: 180x180x16
         ## downsampling only path
