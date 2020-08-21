@@ -222,7 +222,7 @@ class Generator:
       image_output = output_block(x)
 
       # Make Model
-      model = Model(inputs = latent_input, outputs = image_output)
+      model = Model(inputs = latent_input, outputs = image_output, name='generator-512-0')
 
       if not silent:
         model.summary()
@@ -332,8 +332,12 @@ class Generator:
       fade_output = WeightedSum()([samp_output, full_output])    # transition from upsampling only to full
 
       # Make new model on top of the old model
-      model_full = Model(inputs = new_inputs, outputs = full_output)
-      model_fade = Model(inputs = new_inputs, outputs = fade_output)
+      if injectible:
+        suf = '-i'
+      else:
+        suf = ''
+      model_full = Model(inputs = new_inputs, outputs = full_output, name='generator-512-'+str(next_progress)+suf)
+      model_fade = Model(inputs = new_inputs, outputs = fade_output, name='generator-512-'+str(next_progress)+'-fade'+suf)
 
       if not silent:
         model_full.summary()
@@ -366,7 +370,7 @@ class Generator:
       image_output = output_block(x)
 
       # Make Model
-      model = Model(inputs = latent_input, outputs = image_output)
+      model = Model(inputs = latent_input, outputs = image_output, name='generator-256-0')
 
       if not silent:
         model.summary()
@@ -481,8 +485,12 @@ class Generator:
       fade_output = WeightedSum()([samp_output, full_output])    # transition from upsampling only to full
 
       # Make new model on top of the old model
-      model_full = Model(inputs = new_inputs, outputs = full_output)
-      model_fade = Model(inputs = new_inputs, outputs = fade_output)
+      if injectible:
+        suf = '-i'
+      else:
+        suf = ''
+      model_full = Model(inputs = new_inputs, outputs = full_output, name='generator-256-'+str(next_progress)+suf)
+      model_fade = Model(inputs = new_inputs, outputs = fade_output, name='generator-256-'+str(next_progress)+'-fade'+suf)
 
       if not silent:
         model_full.summary()

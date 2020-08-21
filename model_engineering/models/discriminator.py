@@ -134,7 +134,7 @@ class Discriminator:
       x = layers.Dense(1, name='final_dense')(x)
 
       # Make Model
-      model = Model(inputs = image_input, outputs = x)
+      model = Model(inputs = image_input, outputs = x, name='discriminator-512-0')
 
       model.summary()
 
@@ -144,7 +144,7 @@ class Discriminator:
   def progress_model(self, model, strategy):
     d_block = self.d_block
     input_block = self.input_block
-    current_progress = self.current_progress
+    current_progress = self.current_progress      # note that the generator currently use a newer system on progress referencing
 
     if current_progress >= self.MAX_PROGRESS:
       print("Maximum progress reached!")
@@ -218,8 +218,8 @@ class Discriminator:
         merged = model.layers[i](merged)
 
       # Make new model on top of the old model
-      model_full = Model(inputs = image_input, outputs = x)
-      model_fade = Model(inputs = image_input, outputs = merged)
+      model_full = Model(inputs = image_input, outputs = x, name='discriminator-512-'+str(current_progress))
+      model_fade = Model(inputs = image_input, outputs = merged, name='discriminator-512-'+str(current_progress)+'-fade')
 
       model_full.summary()
     
@@ -242,7 +242,7 @@ class Discriminator:
       x = layers.Dense(1, name='final_dense')(x)
 
       # Make Model
-      model = Model(inputs = image_input, outputs = x)
+      model = Model(inputs = image_input, outputs = x, name='discriminator-256-0')
 
       model.summary()
 
@@ -331,8 +331,8 @@ class Discriminator:
         merged = model.layers[i](merged)
 
       # Make new model on top of the old model
-      model_full = Model(inputs = image_input, outputs = x)
-      model_fade = Model(inputs = image_input, outputs = merged)
+      model_full = Model(inputs = image_input, outputs = x, name='discriminator-256-'+str(current_progress))
+      model_fade = Model(inputs = image_input, outputs = merged, name='discriminator-256-'+str(current_progress)+'-fade')
 
       model_full.summary()
     
