@@ -8,6 +8,7 @@ import tensorflow as tf
 from technical.accelerators import BATCH_SIZE as bs
 from PIL import Image
 import json
+import numpy as np
 
 ###### Constants ######
 
@@ -15,6 +16,7 @@ AUTO = tf.data.experimental.AUTOTUNE
 DEFAULT_IMAGE_SIZE = [360, 360]
 BATCH_SIZE = bs
 JSON = None
+IMAGE_SIZE = None
 
 ###### Functions ######
 
