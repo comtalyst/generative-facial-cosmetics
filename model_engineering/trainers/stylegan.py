@@ -6,9 +6,9 @@ from config import *
 import tensorflow as tf
 from tensorflow import keras
 if isWindows():
-  from tensorflow_core.python.keras.api._v2.keras import layers, Model, optimizers, losses
+  from tensorflow_core.python.keras.api._v2.keras import layers, Model, optimizers, losses, backend
 else:
-  from tensorflow.keras import layers, Model, optimizers, losses
+  from tensorflow.keras import layers, Model, optimizers, losses, backend
 from utils.model_utils import *
 from utils.generator_utils import *
 import functools
@@ -35,14 +35,20 @@ MAX_TO_KEEP = 100
 ###### Functions ######
 
 ## losses
+def wasserstein_loss(reals, predictions):
+  return backend.mean(reals * predictions)
+  
 def discriminator_loss(real_output, fake_output):
-  real_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(real_output), real_output)
-  fake_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.zeros_like(fake_output), fake_output)
+  #real_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(real_output), real_output)
+  #fake_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.zeros_like(fake_output), fake_output)
+  real_loss = wasserstein_loss(tf.ones_like(real_output), real_output)
+  fake_loss = wasserstein_loss(tf.zeros_like(fake_output), fake_output)
   total_loss = real_loss + fake_loss
   return total_loss
 
 def generator_loss(fake_output):
-  return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
+  #return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
+  return wasserstein_loss(tf.ones_like(fake_output), fake_output)
 
 @tf.function
 def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size, strategy):
