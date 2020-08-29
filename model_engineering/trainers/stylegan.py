@@ -1,5 +1,7 @@
 ########## StyleGan trainer ##########
-
+'''
+Next time do this as a class for simplicity of prop customizations
+'''
 ###### Imports ######
 
 from config import *
@@ -19,7 +21,7 @@ from IPython import display
 ###### Constants ######
 
 FIRSTSTEP = True
-DEFAULT_LR = 1e-4
+DEFAULT_LR = 5e-5
 gen_loss_dict = dict()
 disc_loss_dict = dict()
 
@@ -35,20 +37,17 @@ MAX_TO_KEEP = 100
 ###### Functions ######
 
 ## losses
-def wasserstein_loss(reals, predictions):
-  return backend.mean(reals * predictions)
-  
 def discriminator_loss(real_output, fake_output):
   #real_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(real_output), real_output)
   #fake_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.zeros_like(fake_output), fake_output)
-  real_loss = wasserstein_loss(tf.ones_like(real_output), real_output)
-  fake_loss = wasserstein_loss(tf.zeros_like(fake_output), fake_output)
-  total_loss = real_loss + fake_loss
-  return total_loss
+  #total_loss = real_loss + fake_loss
+  # currently using wasserstein loss
+  return backend.mean(real_output) - backend.mean(fake_output)
 
 def generator_loss(fake_output):
   #return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
-  return wasserstein_loss(tf.ones_like(fake_output), fake_output)
+  # currently using wasserstein loss
+  return -backend.mean(fake_output)
 
 @tf.function
 def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size, strategy):
@@ -112,11 +111,13 @@ def load_checkpoint(generator, discriminator, strategy, load_fade=True):
     else :
       print("No checkpoints to be restored")
 
-def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, strategy, lr=[DEFAULT_LR, DEFAULT_LR], restore_checkpoint=True):
+def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, strategy, lr=[DEFAULT_LR, DEFAULT_LR*5], restore_checkpoint=True):
   global generator_optimizer
   global discriminator_optimizer
-  generator_optimizer = tf.keras.optimizers.Adam(lr[0])
-  discriminator_optimizer = tf.keras.optimizers.Adam(lr[1])
+  #generator_optimizer = tf.keras.optimizers.Adam(lr[0])
+  #discriminator_optimizer = tf.keras.optimizers.Adam(lr[1])
+  generator_optimizer = tf.keras.optimizers.RMSprop(lr[0])
+  discriminator_optimizer = tf.keras.optimizers.RMSprop(lr[1])
   
   if generator.current_progress != discriminator.current_progress:
     raise ValueError("The progresses of generator " + str(generator.current_progress) + 
