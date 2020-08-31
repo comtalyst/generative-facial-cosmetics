@@ -21,7 +21,7 @@ from IPython import display
 ###### Constants ######
 
 FIRSTSTEP = True
-DEFAULT_LR = 5e-5
+DEFAULT_LR = 1e-4
 gen_loss_dict = dict()
 disc_loss_dict = dict()
 
@@ -114,13 +114,13 @@ def load_checkpoint(generator, discriminator, strategy, load_fade=True):
     else :
       print("No checkpoints to be restored")
 
-def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, strategy, lr=[DEFAULT_LR, DEFAULT_LR*5], restore_checkpoint=True):
+def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, strategy, lr=[DEFAULT_LR, DEFAULT_LR], restore_checkpoint=True):
   global generator_optimizer
   global discriminator_optimizer
-  #generator_optimizer = tf.keras.optimizers.Adam(lr[0])
-  #discriminator_optimizer = tf.keras.optimizers.Adam(lr[1])
-  generator_optimizer = tf.keras.optimizers.RMSprop(lr[0])
-  discriminator_optimizer = tf.keras.optimizers.RMSprop(lr[1])
+  generator_optimizer = tf.keras.optimizers.Adam(lr[0])
+  discriminator_optimizer = tf.keras.optimizers.Adam(lr[1])
+  #generator_optimizer = tf.keras.optimizers.RMSprop(lr[0])
+  #discriminator_optimizer = tf.keras.optimizers.RMSprop(lr[1])
   
   if generator.current_progress != discriminator.current_progress:
     raise ValueError("The progresses of generator " + str(generator.current_progress) + 
