@@ -132,7 +132,8 @@ class Discriminator:
       x = d_block(x, 2048, reduce_times = 1)
       x = layers.Flatten()(x)
       x = layers.Dense(1, name='final_dense')(x)
-      # no activation of using wasserstein
+      # no activation if using wasserstein, sigmoid if using minimax
+      x = layers.Activation('sigmoid')
 
       # Make Model
       model = Model(inputs = image_input, outputs = x, name='discriminator-512-0')

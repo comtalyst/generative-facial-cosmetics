@@ -36,18 +36,21 @@ MAX_TO_KEEP = 100
 
 ###### Functions ######
 
-## losses
+### losses
 def discriminator_loss(real_output, fake_output):
-  #real_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(real_output), real_output)
-  #fake_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.zeros_like(fake_output), fake_output)
-  #total_loss = real_loss + fake_loss
-  # currently using wasserstein loss
-  return backend.mean(real_output) - backend.mean(fake_output)
+  ## minimax loss
+  real_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(real_output), real_output)
+  fake_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.zeros_like(fake_output), fake_output)
+  total_loss = real_loss + fake_loss
+  return total_loss
+  ## wasserstein loss: the higher discriminator (critic) output, the more "real" the image is
+  #return -(backend.mean(real_output) - backend.mean(fake_output))
 
 def generator_loss(fake_output):
-  #return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
-  # currently using wasserstein loss
-  return -backend.mean(fake_output)
+  ## minimax loss
+  return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
+  ## wasserstein loss
+  #return -backend.mean(fake_output)
 
 @tf.function
 def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size, strategy):
