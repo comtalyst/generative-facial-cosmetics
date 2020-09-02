@@ -44,6 +44,7 @@ def discriminator_loss(real_output, fake_output):
   total_loss = real_loss + fake_loss
   return total_loss
   ## wasserstein loss: the higher discriminator (critic) output, the more "real" the image is
+  ###### ALSO CLIP WEIGHTS WHEN USING WASSERSTEIN
   #return -(backend.mean(real_output) - backend.mean(fake_output))
 
 def generator_loss(fake_output):
