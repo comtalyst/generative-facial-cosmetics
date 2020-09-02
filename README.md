@@ -1,4 +1,5 @@
-# generative-facial-cosmetics
-Using GAN and machine learning algorithms to apply specified facial makeups to input faces
-<br><br>
-This repo will be updated once in a while due to collab notebook's online processing nature
+# Generative Facial Cosmetics
+Using Generative Adversarial Networks (GAN) to apply various facial makeup products to the input face automatically and smoothly.
+<br>
+For more details, please visit <a href="https://comtalyst.com/#/pages/GFC">this page</a>.
+<br>
