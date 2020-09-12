@@ -76,6 +76,7 @@ def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size,
       disc_loss = discriminator_loss(real_output, fake_output)
       gen_loss_dict[epoch].append(gen_loss)
       disc_loss_dict[epoch].append(disc_loss)
+    return gen_loss, disc_loss
 
     gradients_of_generator = gen_tape.gradient(gen_loss, generator.model.trainable_variables)
     gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.model.trainable_variables)
@@ -83,9 +84,10 @@ def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size,
     generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.model.trainable_variables))
     discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.model.trainable_variables))
   if isColab():
-    strategy.run(true_step, args=(images,))       # make sure this is a tuple using ','
+    gen_loss, disc_loss = strategy.run(true_step, args=(images,))       # make sure this is a tuple using ','
   else:
-    true_step(images)
+    gen_loss, disc_loss = true_step(images)
+  return strategy.reduce(tf.distribute.ReduceOp.SUM, gen_loss, axis=None), strategy.reduce(tf.distribute.ReduceOp.SUM, disc_loss, axis=None)
 
 # load checkpoint without training, intended to have similar function as loading models
 # do not load fade if you are loading from models that do not have fade
@@ -153,20 +155,32 @@ def train(generator, discriminator, dataset, fade_epochs, epochs, batch_size, st
   allstart = time.time()
   for epoch in range(last_epoch+1, epochs+1):
     start = time.time()
+    gen_losses = 0.0
+    disc_losses = 0.0
+    n_batch = 0
 
     for image_batch in dataset:
-      train_step(generator, discriminator, epoch, fade_epochs, image_batch, batch_size, strategy)
+      gen_loss, disc_loss = train_step(generator, discriminator, epoch, fade_epochs, image_batch, batch_size, strategy)
+      gen_losses = tf.math.add(gen_losses, gen_loss)
+      disc_losses = tf.math.add(disc_losses, disc_loss)
       if FIRSTSTEP:
         print("First batch done!")
         FIRSTSTEP = False
+      n_batch += 1
+    
+    gen_loss = tf.math.divide(tf.math.reduce_sum(gen_losses), n_batch*batch_size)     # may not accurate??
+    disc_loss = tf.math.divide(tf.math.reduce_sum(disc_losses), n_batch*batch_size)     # may not accurate??
 
     # Produce images for the GIF as we go
+    '''
     try:
       display.clear_output(wait=True)
     except:
       pass
+    '''
     generate_and_save_images(generator, epoch, bool(epoch < fade_epochs))
 
+    print('Epoch {}: Average generator loss = {}, discriminator loss = {}'.format(epoch, gen_loss, disc_loss))
     print ('Time for epoch {} is {} sec, total {} sec'.format(epoch, time.time()-start, time.time()-allstart))
     # Save the model every EPOCHS_TO_SAVE epochs (not include in time)
     if (epoch) % EPOCHS_TO_SAVE == 0:
