@@ -76,13 +76,13 @@ def train_step(generator, discriminator, epoch, fade_epochs, images, batch_size,
       disc_loss = discriminator_loss(real_output, fake_output)
       gen_loss_dict[epoch].append(gen_loss)
       disc_loss_dict[epoch].append(disc_loss)
-    return gen_loss, disc_loss
 
     gradients_of_generator = gen_tape.gradient(gen_loss, generator.model.trainable_variables)
     gradients_of_discriminator = disc_tape.gradient(disc_loss, discriminator.model.trainable_variables)
 
     generator_optimizer.apply_gradients(zip(gradients_of_generator, generator.model.trainable_variables))
     discriminator_optimizer.apply_gradients(zip(gradients_of_discriminator, discriminator.model.trainable_variables))
+    return gen_loss, disc_loss
   if isColab():
     gen_loss, disc_loss = strategy.run(true_step, args=(images,))       # make sure this is a tuple using ','
   else:
