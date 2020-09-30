@@ -35,10 +35,13 @@ class Discriminator:
   model = None
   model_type = None
   model_fade = None         # fading-to-grown model
+  dropout = None
 
   ###### Constructor ######
 
-  def __init__(self, strategy, model_type=None):
+  def __init__(self, strategy, model_type=None, dropout=0.2):
+    self.dropout = dropout
+
     # latent = 512
     if model_type == None or model_type == '512':
       model_type = '512'
@@ -122,6 +125,7 @@ class Discriminator:
   def build_model(self, strategy):
     d_block = self.d_block
     input_block = self.input_block
+    dropout = self.dropout
 
     with strategy.scope():
       # Image input
@@ -131,6 +135,7 @@ class Discriminator:
       # convert to prob for decision using 1-dimensional Neural Network
       x = d_block(x, 2048, reduce_times = 1)
       x = layers.Flatten()(x)
+      x = layers.Dropout(dropout)(x)
       x = layers.Dense(1, name='final_dense')(x)
       # no activation if using wasserstein, sigmoid if using minimax
       x = layers.Activation('sigmoid')(x)

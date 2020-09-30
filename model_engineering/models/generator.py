@@ -35,10 +35,13 @@ class Generator:
   model = None
   model_type = None
   model_fade = None         # fading-to-grown model
+  dropout = None
 
   ###### Constructor ######
 
-  def __init__(self, strategy, model_type=None):
+  def __init__(self, strategy, model_type=None, dropout=0.2):
+    self.dropout = dropout
+
     # latent = 512
     if model_type == None or model_type == '512':
       model_type = '512'
@@ -151,10 +154,13 @@ class Generator:
     return y * scale + bias
   
   def mapping_block(self, latent_input):
-    self.MAPPING_BLOCK_LEN = 3
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu', name='mapping_dense0')(latent_input)
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu', name='mapping_dense1')(latent)
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu', name='mapping_dense2')(latent)
+    self.MAPPING_BLOCK_LEN = 6
+    latent = layers.Dense(units=self.LATENT_SIZE, name='mapping_dense0')(latent_input)
+    latent = layers.LeakyReLU(0.2, name='mapping_activ0')(latent)
+    latent = layers.Dense(units=self.LATENT_SIZE, name='mapping_dense1')(latent)
+    latent = layers.LeakyReLU(0.2, name='mapping_activ1')(latent)
+    latent = layers.Dense(units=self.LATENT_SIZE, name='mapping_dense2')(latent)
+    latent = layers.LeakyReLU(0.2, name='mapping_activ2')(latent)
     return latent
 
   def g_block(self, input_tensor, latent_vector, filters, upsamp, name=None):
@@ -173,7 +179,7 @@ class Generator:
       out = input_tensor
     out = layers.Conv2D(filters=filters, kernel_size=3, padding = 'same', name=name+'_conv')(out)
     out = layers.Lambda(AdaIN)([out, gamma, beta])
-    out = layers.Activation('relu', name=name+'_activ')(out)
+    out = layers.LeakyReLU(0.2, name=name+'_activ')(out)
     
     return out
   
@@ -204,6 +210,7 @@ class Generator:
     g_block = self.g_block
     output_block = self.output_block
     mapping_block = self.mapping_block
+    dropout = self.dropout
 
     with strategy.scope():
       # Latent input
@@ -213,7 +220,9 @@ class Generator:
       latent = mapping_block(latent_input)
 
       # Reshape to 5x5x512
-      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu', name='aftermap_dense')(latent)
+      x = layers.Dense(units=5*5*self.LATENT_SIZE, name='aftermap_dense')(latent)
+      x = layers.LeakyReLU(0.2, name='aftermap_activ')(x)
+      x = layers.Dropout(dropout)(x)
       x = layers.Reshape([5, 5, self.LATENT_SIZE], name='aftermap_reshape')(x)
       # Size: 5x5x512
       self.image_shape = (5, 5, 4)
@@ -361,7 +370,8 @@ class Generator:
       latent = mapping_block(latent_input)
 
       # Reshape to 5x5x256
-      x = layers.Dense(units=5*5*self.LATENT_SIZE, activation = 'relu')(latent)
+      x = layers.Dense(units=5*5*self.LATENT_SIZE)(latent)
+      x = layers.LeakyReLU(0.2)(x)
       x = layers.Reshape([5, 5, self.LATENT_SIZE])(x)
       # Size: 5x5x256
       self.image_shape = (5, 5, 4)
