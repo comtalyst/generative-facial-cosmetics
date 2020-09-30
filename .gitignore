@@ -11,4 +11,4 @@ model_engineering/outputs
 encoder_engineering/outputs
 finalization/outputs
 */__pycache__
-generative-facial-cosmetics.code-workspace
+*.code-workspace
