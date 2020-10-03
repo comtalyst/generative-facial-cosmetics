@@ -253,13 +253,13 @@ class Generator:
       if next_progress == 1:
         ## main (upsampling + AdaIN) path
         if injectible:
-          new_latent, new_input = self.get_new_latent(model, '512')
+          new_latent, new_input = self.get_new_latent(model, '256')
           new_inputs.append(new_input)
           latent = new_latent
         else:
           latent = old_latent
-        x = g_block(old_output, latent, 512, 3)           # Size: 15x15x512
-
+        x = g_block(old_output, latent, 256, 3)           # Size: 15x15x256
+        '''
         if injectible:
           new_latent, new_input = self.get_new_latent(model, '256')
           new_inputs.append(new_input)
@@ -267,6 +267,7 @@ class Generator:
         else:
           latent = old_latent
         x = g_block(x, latent, 256, 1)                    # Size: 15x15x256
+        '''
 
         ## upsampling only path
         y = layers.UpSampling2D(3)(old_output)            # Size: 15x15x512
