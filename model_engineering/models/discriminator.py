@@ -136,8 +136,8 @@ class Discriminator:
       x = d_block(x, 2048, reduce_times = 1)
       x = layers.Flatten()(x)
       x = layers.Dropout(dropout)(x)
-      x = layers.Dense(2048, name='prefinal_dense')(x)
-      x = layers.LeakyReLU(0.2, name='prefinal_activ')(x)
+      #x = layers.Dense(2048, name='prefinal_dense')(x)
+      #x = layers.LeakyReLU(0.2, name='prefinal_activ')(x)
       x = layers.Dense(1, name='final_dense')(x)
 
       # Make Model
