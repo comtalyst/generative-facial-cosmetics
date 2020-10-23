@@ -24,6 +24,7 @@ FIRSTSTEP = True
 DEFAULT_LR = 1e-4
 gen_loss_dict = dict()
 disc_loss_dict = dict()
+EPSILON = 1e-8
 
 ## optimizers
 generator_optimizer = tf.keras.optimizers.Adam(DEFAULT_LR)
@@ -39,8 +40,8 @@ MAX_TO_KEEP = 100
 ### losses
 def discriminator_loss(real_output, fake_output):
   ## minimax loss
-  real_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(real_output), real_output)
-  fake_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.zeros_like(fake_output), fake_output)
+  real_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(real_output), real_output+EPSILON)
+  fake_loss = losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.zeros_like(fake_output)+EPSILON, fake_output+EPSILON)
   total_loss = real_loss + fake_loss
   return total_loss
   ## wasserstein loss: the higher discriminator (critic) output, the more "real" the image is
@@ -49,7 +50,7 @@ def discriminator_loss(real_output, fake_output):
 
 def generator_loss(fake_output):
   ## minimax loss
-  return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output)
+  return losses.BinaryCrossentropy(from_logits=True, reduction=losses.Reduction.SUM)(tf.ones_like(fake_output), fake_output+EPSILON)
   ## wasserstein loss
   #return -backend.mean(fake_output)
 
