@@ -17,7 +17,7 @@ class Encoder:
 
   ###### Constants ######
 
-  LATENT_SIZE = 256
+  LATENT_SIZE = 512
   IMAGE_SHAPE = (360, 360, None)
   ## to-be-defined
   model = None
