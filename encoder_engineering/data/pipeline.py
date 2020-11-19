@@ -14,8 +14,9 @@ import numpy as np
 ###### Constants ######
 
 AUTO = tf.data.experimental.AUTOTUNE
-DEFAULT_IMAGE_SIZE = [360, 360]
-LATENT_SIZE = 256
+#DEFAULT_IMAGE_SIZE = [360, 360]
+DEFAULT_IMAGE_SIZE = [90, 90]
+LATENT_SIZE = 512
 BATCH_SIZE = bs
 ## to be defined
 GENERATOR = None
