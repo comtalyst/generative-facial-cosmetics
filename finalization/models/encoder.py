@@ -17,8 +17,9 @@ class Encoder:
 
   ###### Constants ######
 
-  LATENT_SIZE = 256
+  LATENT_SIZE = 256 #512
   IMAGE_SHAPE = (360, 360, None)
+  #IMAGE_SHAPE = (90, 90, None)
   ## to-be-defined
   model = None
   model_type = None
@@ -30,6 +31,10 @@ class Encoder:
     if model_type == None or model_type == 'new_vgg':
       self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 4)
       self.model = self.build_model(strategy)
+    # blank, modified vgg16, 90x90
+    elif model_type == 'new_vgg_reduced':
+      self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 4)
+      self.model = self.build_model_reduced(strategy)
     # pre-trained vgg16
     elif model_type == 'vgg16':
       self.IMAGE_SHAPE = (self.IMAGE_SHAPE[0], self.IMAGE_SHAPE[1], 3)
@@ -76,6 +81,27 @@ class Encoder:
     if reduce_times > 1:
       out = layers.AveragePooling2D(reduce_times)(out)
     return out
+
+  ## build model (custom), note that this model requires 4 channels, 90x90
+  def build_model_reduced(self, strategy):
+    d_block = self.d_block
+    with strategy.scope():
+      input_layer = layers.Input(self.IMAGE_SHAPE)
+      x = input_layer
+      
+      x = d_block(x, 32, 2)                       # 90x90x32, 45x45x32
+      x = d_block(x, 64, 3)                       # 45x45x64, 15x15x64
+      x = d_block(x, 128, 3)                      # 15x15x128, 5x5x128
+
+      x = layers.Flatten()(x)                     # 5*5*128 = 3200
+      x = layers.Dense(2048)(x)
+      x = layers.Dense(2048)(x)
+      x = layers.Dense(self.LATENT_SIZE)(x)
+
+      model = Model(inputs=input_layer, outputs=x, name="modified-vgg16-encoder")
+      model.summary()
+
+    return model
 
   ## build model (custom), note that this model requires 4 channels
   def build_model(self, strategy):

@@ -18,7 +18,7 @@ class Generator:
 
   ###### Constants ######
 
-  LATENT_SIZE = 512
+  LATENT_SIZE = 256 #512
   FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
   image_shapes = {
@@ -39,7 +39,7 @@ class Generator:
 
   ###### Constructor ######
 
-  def __init__(self, strategy, model_type=None, dropout=0.2):
+  def __init__(self, strategy, model_type=None, dropout=0):
     self.dropout = dropout
 
     # latent = 512
