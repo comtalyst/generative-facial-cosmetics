@@ -18,7 +18,7 @@ class Generator:
 
   ###### Constants ######
 
-  LATENT_SIZE = 256 #512
+  LATENT_SIZE = 512
   FINAL_IMAGE_SHAPE = (360, 360, 4)
   MAX_PROGRESS = 5
   image_shapes = {
@@ -39,7 +39,7 @@ class Generator:
 
   ###### Constructor ######
 
-  def __init__(self, strategy, model_type=None, dropout=0):
+  def __init__(self, strategy, model_type=None, dropout=0.2):
     self.dropout = dropout
 
     # latent = 512
@@ -356,39 +356,12 @@ class Generator:
     # return progressed model
     return model_full, model_fade
 
-  def g_block_256(self, input_tensor, latent_vector, filters, upsamp, name=None):
-    # Warning: this block is not a straight line!
-    AdaIN = self.AdaIN
-
-    if name == None:
-      name = str(filters)
-
-    gamma = layers.Dense(units=filters, bias_initializer = 'ones', name=name+'_latent_gamma')(latent_vector)
-    beta = layers.Dense(units=filters, name=name+'_latent_beta')(latent_vector)
-    
-    if upsamp > 1:
-      out = layers.UpSampling2D(upsamp, name=name+'_upsamp')(input_tensor)
-    else:
-      out = input_tensor
-    out = layers.Conv2D(filters=filters, kernel_size=3, padding = 'same', name=name+'_conv')(out)
-    out = layers.Lambda(AdaIN)([out, gamma, beta])
-    out = layers.Activation('relu', name=name+'_activ')(out)
-    
-    return out
-
-  def mapping_block_256(self, latent_input):
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent_input)
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
-    latent = layers.Dense(units=self.LATENT_SIZE, activation = 'relu')(latent)
-    return latent
-
   ## build model (latent=256, pre-progress)
   def build_model_256(self, strategy, silent=False):
     AdaIN = self.AdaIN
-    g_block = self.g_block_256
+    g_block = self.g_block
     output_block = self.output_block
-    mapping_block = self.mapping_block_256
-    self.MAPPING_BLOCK_LEN = 3
+    mapping_block = self.mapping_block
 
     with strategy.scope():
       # Latent input
@@ -423,7 +396,7 @@ class Generator:
       Samp: Old Pre-Output Block --> Upsampling --> Old Output Block ----------------->
     '''
     AdaIN = self.AdaIN
-    g_block = self.g_block_256
+    g_block = self.g_block
     output_block = self.output_block
 
     with strategy.scope():
