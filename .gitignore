@@ -12,3 +12,9 @@ encoder_engineering/outputs
 finalization/outputs
 */__pycache__
 *.code-workspace
+
+API/node_modules
+API/build
+API/npm-debug.log
+API/.env
+API/.DS_Store
