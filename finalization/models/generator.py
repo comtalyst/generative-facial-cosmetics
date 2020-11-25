@@ -72,7 +72,7 @@ class Generator:
 
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
-    fname = "generator" + "-p_" + str(self.current_progress) + "-e_" + str(epoch)
+    fname = "generator" + "-p_" + str(self.current_progress) + "-e_" + str(epoch) + '.h5'
     with strategy.scope():
       model.save(os.path.join(dir, fname))
 

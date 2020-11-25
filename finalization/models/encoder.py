@@ -52,7 +52,7 @@ class Encoder:
 
     if dir == None:
       dir = os.path.join(DIR_OUTPUT, os.path.join('saved_models', 'current'))
-    fname = "encoder" + "-e_" + str(epoch)
+    fname = "encoder" + "-e_" + str(epoch) + '.h5'
     with strategy.scope():
       model.save(os.path.join(dir, fname))
 
