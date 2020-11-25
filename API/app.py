@@ -20,3 +20,5 @@ def hello():
   return jsontify(f"{text1} {hello} {text2}")
 
 ###### Execution ######
+if __name__ == '__main__':
+  app.run(host="0.0.0.0")
