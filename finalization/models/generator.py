@@ -8,10 +8,7 @@ from tensorflow import keras
 import os
 import h5py
 from models.custom_layers.WeightedSum import WeightedSum
-if isWindows():
-  from tensorflow_core.python.keras.api._v2.keras import layers, Model, models, backend
-else:
-  from tensorflow.keras import layers, Model, models, backend
+from tensorflow.keras import layers, Model, models, backend
 
 ###### Class Content ######
 class Generator:

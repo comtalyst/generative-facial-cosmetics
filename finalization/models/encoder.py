@@ -7,10 +7,7 @@ import tensorflow as tf
 from tensorflow import keras
 import os
 import h5py
-if isWindows():
-  from tensorflow_core.python.keras.api._v2.keras import layers, Model, models, backend
-else:
-  from tensorflow.keras import layers, Model, models, backend
+from tensorflow.keras import layers, Model, models, backend
 
 ###### Class Content ######
 class Encoder:

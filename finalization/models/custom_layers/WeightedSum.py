@@ -5,10 +5,7 @@
 from config import *
 import tensorflow as tf
 from tensorflow import keras
-if isWindows():
-  from tensorflow_core.python.keras.api._v2.keras import layers, backend
-else:
-  from tensorflow.keras import layers, backend
+from tensorflow.keras import layers, backend
 
 ###### Class Content ######
 class WeightedSum(layers.Add):
