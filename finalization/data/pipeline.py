@@ -23,7 +23,7 @@ IMAGE_SIZE = None
 
 ### preprocess input (customized)
 def preprocess(image):
-  return cv2.resize(image, IMAGE_SIZE)
+  return image
 
 ### just call this ez func
 def load_image(path, image_size=DEFAULT_IMAGE_SIZE):

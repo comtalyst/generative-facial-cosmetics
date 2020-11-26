@@ -22,6 +22,7 @@ POINTS = 68
 PAD = 10        
 LIPS_UPPER = 340
 LIPS_BOX_SIZE = LIPS_UPPER + PAD*2      # must = trained models' preferred size (currently 360)
+LIPS_PREF_W = 220                       # taken from dataset statistics
 
 ###### Functions ######
 
@@ -144,15 +145,34 @@ def detect_and_crop_lips(img_path=None, img_bytes=None, img_full=None):
   face_w = np.abs(face.right() - face.left())
   face_h = np.abs(face.top() - face.bottom())
 
-  if face_w < 400 or face_h < 400:
-    # anomaly
-    print('Warning: Anomalous input: face size is too small')
-
   ##### statisticize lips #####
   # get landmarks of lips
   lips_landmarks = landmarks[48:68]     # based on the map far above (currently for 68 landmarks predictor)
 
   # get lips size details
+  lips_landmarks_x = list(landmark[0] for landmark in lips_landmarks)
+  lips_landmarks_y = list(landmark[1] for landmark in lips_landmarks)
+  min_x = np.min(lips_landmarks_x)
+  max_x = np.max(lips_landmarks_x)
+  min_y = np.min(lips_landmarks_y)
+  max_y = np.max(lips_landmarks_y)
+  lips_w = np.abs(max_x - min_x)
+  lips_h = np.abs(max_y - min_y)
+  lips_w_r = lips_w/face_w
+  lips_h_r = lips_h/face_h
+
+  # resize to compensate generator's incomprehension, then redo
+  k = LIPS_PREF_W/lips_w
+  img = cv2.resize(img, (int(round(img.shape[1]*k)), int(round(img.shape[0]*k))))
+  img_resized = img
+  landmarks, face = detect_landmarks(img_full=img, show=False)
+  if face == None:
+    # no face detected
+    print('Error: No face detected')
+    return None
+  face_w = np.abs(face.right() - face.left())
+  face_h = np.abs(face.top() - face.bottom())
+  lips_landmarks = landmarks[48:68]
   lips_landmarks_x = list(landmark[0] for landmark in lips_landmarks)
   lips_landmarks_y = list(landmark[1] for landmark in lips_landmarks)
   min_x = np.min(lips_landmarks_x)
@@ -231,7 +251,7 @@ def detect_and_crop_lips(img_path=None, img_bytes=None, img_full=None):
     lips_landmarks_y[i] -= min_y - offset[1]
     lips_landmarks[i] = (int(lips_landmarks_x[i] - (min_x - offset[0])), int(lips_landmarks_y[i] - (min_y - offset[1])))
   
-  return box, [min_x, min_y, max_x, max_y, offset[0], offset[1]]
+  return box, [min_x, min_y, max_x, max_y, offset[0], offset[1]], img_resized     # also etun resized image
 
 def replace_lips(cropped_lips, p_data, img_path=None, img_bytes=None, img_full=None):
   img = None
@@ -252,6 +272,7 @@ def replace_lips(cropped_lips, p_data, img_path=None, img_bytes=None, img_full=N
   plt.imshow(img_pil)
 
   return img_pil
+
 
 
 ###### Execution ######
