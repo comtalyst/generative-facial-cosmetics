@@ -7,6 +7,7 @@ Exposed to upper service (e.g. mix.py)
 import cv2
 import numpy as np
 import base64
+from services.backend.utils.img_utils import bytes_to_base64str, base64str_to_bytes
 
 ###### Project Imports ######
 
@@ -16,17 +17,6 @@ preferred_size = (360, 360)
 ###### Global Variables ######
 
 ###### Routes ######
-
-def bytes_to_base64str(bbytes):
-  # for more info on this algo, see experiment section of finalization
-  b64 = base64.b64encode(bbytes)
-  b64str = str(b64, "ANSI")
-  return b64str
-
-def base64str_to_bytes(b64str):
-  b64 = bytes(b64str, "ANSI")
-  bbytes = base64.b64decode(b64)
-  return bbytes
 
 def validate_and_resize(img_b64str):
   print("services.backend.sizing: validate_and_resize")

@@ -23,7 +23,7 @@ def mix(base_img, style_img):
   base_img = sizing.validate_and_resize(base_img)
   style_img = sizing.validate_and_resize(style_img)
 
-  mixed_img, loss = ml_model_mix.mix(base_img, style_img)
+  mixed_img, base_loss, style_loss = ml_model_mix.mix(base_img, style_img, return_losses=True)
   # TODO: contact db
   return mixed_img
 
