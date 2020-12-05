@@ -18,6 +18,7 @@ CORS(app)
 ###### Routes ######
 
 # TODO: async stuff
+# TODO: initializer
 
 @app.route('/hello', methods=['POST'])
 def hello():
