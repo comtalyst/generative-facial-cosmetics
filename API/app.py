@@ -33,8 +33,8 @@ def mix():
   encoded as a ANSI string rep. of base64(image bytes)
   """
   print("Controller: mix")
-  base_img = str(request.form.get("base_img"))
-  style_img = str(request.form.get("style_img"))
+  base_img = str(request.json.get("base_img"))
+  style_img = str(request.json.get("style_img"))
   results = stylemix.mix(base_img, style_img)
   return jsonify(result_img=results)
 
