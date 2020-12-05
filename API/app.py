@@ -33,10 +33,16 @@ def mix():
   encoded as a ANSI string rep. of base64(image bytes)
   """
   print("Controller: mix")
-  base_img = str(request.json.get("base_img"))
-  style_img = str(request.json.get("style_img"))
-  results = stylemix.mix(base_img, style_img)
-  return jsonify(result_img=results)
+  try:
+    base_img = str(request.json.get("base_img"))
+    style_img = str(request.json.get("style_img"))
+    results = stylemix.mix(base_img, style_img)
+    print("Controller: mix:: Done!")
+    return jsonify(result_img=results)
+  except Exception as e:
+    print("Controller: mix:: Exception thrown: " + str(e))
+    return jsonify(message=str(e)), 400
+  
 
 ###### Execution ######
 if __name__ == '__main__':
