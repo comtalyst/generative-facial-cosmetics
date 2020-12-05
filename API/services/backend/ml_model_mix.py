@@ -18,6 +18,7 @@ from services.backend.utils.face_utils import detect_and_crop_lips, replace_lips
 ###### Constants ######
 generator_path = "./resources/generator.h5"
 encoder_path = "./resources/encoder.h5"
+preferred_size = (360, 360)
 
 ###### Global Variables ######
 generator = None
@@ -75,6 +76,7 @@ def mix(base_img_b64str, style_img_b64str, return_losses=False):
 
   ## convert
   mixed_img_bgr = cv2.cvtColor(np.array(mixed_img), cv2.COLOR_RGB2BGR)
+  mixed_img_bgr = cv2.resize(mixed_img_bgr, preferred_size)
   mixed_img_bytes = cv2.imencode(".png", mixed_img_bgr)[1].tostring()
   mixed_img_b64str = bytes_to_base64str(mixed_img_bytes)
 
