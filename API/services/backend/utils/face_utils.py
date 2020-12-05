@@ -134,8 +134,7 @@ def detect_and_crop_lips(img_path=None, img_bytes=None, img_full=None):
   #### filtering faces #####
   if face == None:
     # no face detected
-    print('Error: No face detected')
-    return None
+    raise RuntimeError('No face detected')
   
   # get face size details
   face_w = np.abs(face.right() - face.left())
@@ -164,8 +163,8 @@ def detect_and_crop_lips(img_path=None, img_bytes=None, img_full=None):
   landmarks, face = detect_landmarks(img_full=img, show=False)
   if face == None:
     # no face detected
-    print('Error: No face detected')
-    return None
+    raise RuntimeError('No face detected')
+
   face_w = np.abs(face.right() - face.left())
   face_h = np.abs(face.top() - face.bottom())
   lips_landmarks = landmarks[48:68]
@@ -196,11 +195,13 @@ def detect_and_crop_lips(img_path=None, img_bytes=None, img_full=None):
     try:
       lips_landmarks_x[i] = int(lips_landmarks_x[i] + PAD*(dx/d))
     except:
-      print('Divided by zero, skip padding at this point')
+      pass
+      #print('Divided by zero, skip padding at this point')
     try:
       lips_landmarks_y[i] = int(lips_landmarks_y[i] - PAD*(dy/d))
     except:
-      print('Divided by zero, skip padding at this point')
+      pass
+      #print('Divided by zero, skip padding at this point')
     lips_landmarks[i] = (lips_landmarks_x[i], lips_landmarks_y[i])
   
   # update stats after padding
