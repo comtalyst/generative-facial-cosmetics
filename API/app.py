@@ -2,6 +2,7 @@
 
 ###### Global Imports ######
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 
 ###### Project Imports ######
 from services import stylemix
@@ -10,6 +11,7 @@ from services import stylemix
 
 ###### Preprocesses ###### 
 app = Flask(__name__)
+CORS(app)
 
 ###### Global Variables ######
 
@@ -34,7 +36,7 @@ def mix():
   base_img = str(request.form.get("base_img"))
   style_img = str(request.form.get("style_img"))
   results = stylemix.mix(base_img, style_img)
-  return jsonify(results)
+  return jsonify(result_img=results)
 
 ###### Execution ######
 if __name__ == '__main__':
