@@ -5,12 +5,14 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 
 ###### Project Imports ######
+from loaders import loader
 from services import stylemix
 
 ###### Constants ######
 
 ###### Preprocesses ###### 
 app = Flask(__name__)
+# TODO: configs (when using linux)
 CORS(app)
 
 ###### Global Variables ######
@@ -18,7 +20,6 @@ CORS(app)
 ###### Routes ######
 
 # TODO: async stuff
-# TODO: initializer
 
 @app.route('/hello', methods=['POST'])
 def hello():
