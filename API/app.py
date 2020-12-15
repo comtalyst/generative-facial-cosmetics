@@ -45,7 +45,10 @@ def mix():
     print("Controller: mix:: Exception thrown: " + str(e))
     return jsonify(message=str(e)), 400
   
+@app.route('/')
+def index():
+  return "I T W O R K S !"
 
 ###### Execution ######
 if __name__ == '__main__':
-  app.run(host="0.0.0.0")
+  app.run(threaded=True, port=5000)
