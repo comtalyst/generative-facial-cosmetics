@@ -19,4 +19,5 @@ API/npm-debug.log
 API/.env
 API/.DS_Store
 API/resources/*
+API/keys/*
 **/tempCodeRunnerFile.py

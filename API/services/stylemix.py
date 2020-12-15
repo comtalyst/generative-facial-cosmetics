@@ -10,6 +10,7 @@ Exposed to the controller
 ###### Project Imports ######
 from services.backend import ml_model_mix
 from services.backend import sizing
+from models import db
 
 ###### Constants ######
 
@@ -24,7 +25,7 @@ def mix(base_img, style_img):
   style_img = sizing.validate_and_resize(style_img)
 
   mixed_img, base_loss, style_loss = ml_model_mix.mix(base_img, style_img, return_losses=True)
-  # TODO: contact db
+  db.add_row(base_img, style_img, base_loss, style_loss)
   return mixed_img
 
 ###### Execution ######
