@@ -1,0 +1,10 @@
+Dockerfile
+*.png
+*.jpg
+*.cpython-37.pyc
+*.pyc
+*.tar
+*/__pycache__
+*.code-workspace
+**/tempCodeRunnerFile.py
+/misc

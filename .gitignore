@@ -7,6 +7,7 @@ dataset_engineering/outputs/anomalies
 *.jpg
 *.cpython-37.pyc
 *.pyc
+*.tar
 model_engineering/outputs
 encoder_engineering/outputs
 finalization/outputs

@@ -1,3 +1,4 @@
+cmake==3.17.3
 dlib==19.20.0
 Flask==1.1.2
 Flask-Cors==3.0.9
@@ -5,10 +6,10 @@ Flask-Limiter==1.4
 Flask-Migrate==2.5.3
 Flask-SQLAlchemy==2.4.4
 gunicorn==20.0.4
+matplotlib==3.2.0
 numpy==1.18.1
 opencv-python==4.3.0.38
 Pillow==7.1.2
+psycopg2==2.8.6
 SQLAlchemy==1.3.20
 tensorflow==2.3.1
-tensorflow-estimator==2.3.0
-tensorflow-hub==0.9.0
