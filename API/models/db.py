@@ -19,7 +19,7 @@ def init():
   db_string = keys_dict["db_string"]
 
   global db
-  db = create_engine(db_string)
+  db = create_engine(db_string, client_encoding='utf8')
   db.execute("CREATE TABLE IF NOT EXISTS api_losses (base_img text, style_img text, base_loss real, style_loss real)")  
 
 def add_row(base_img, style_img, base_loss, style_loss):
